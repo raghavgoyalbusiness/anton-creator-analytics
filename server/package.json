@@ -10,9 +10,11 @@
     "db:reset": "tsx src/scripts/seed.ts --reset",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "mint": "tsx src/scripts/mint-link.ts"
+    "mint": "tsx src/scripts/mint-link.ts",
+    "extract": "tsx src/scripts/extract.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.1",
     "@anton/shared": "*",
     "@aws-sdk/client-s3": "^3.1116.0",
     "@aws-sdk/s3-request-presigner": "^3.1116.0",

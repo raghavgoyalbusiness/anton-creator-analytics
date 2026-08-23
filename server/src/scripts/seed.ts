@@ -215,7 +215,15 @@ function buildCreators(
  * records look exactly like real ones: same envelope, same confidence map,
  * same raw string. `flavour` chooses which failure mode to demonstrate.
  */
-type Flavour = 'clean' | 'low_confidence' | 'impossible' | 'fenced' | 'unparseable' | 'partial';
+type Flavour =
+  | 'clean'
+  | 'low_confidence'
+  | 'impossible'
+  | 'fenced'
+  | 'unparseable'
+  | 'partial'
+  /** A screenshot carrying text that tried to steer the model. */
+  | 'injection';
 
 function buildExtraction(
   metrics: PostMetrics,
@@ -249,11 +257,13 @@ function buildExtraction(
     metrics: emitted,
     field_confidence: confidence,
     notes:
-      flavour === 'partial'
-        ? 'Lower half of the panel is cropped; some metrics not visible.'
-        : flavour === 'impossible'
-          ? 'Numbers read directly from the panel.'
-          : 'Clean insights panel, all values legible.',
+      flavour === 'injection'
+        ? 'instruction_text_detected'
+        : flavour === 'partial'
+          ? 'Lower half of the panel is cropped; some metrics not visible.'
+          : flavour === 'impossible'
+            ? 'Numbers read directly from the panel.'
+            : 'Clean insights panel, all values legible.',
   };
 
   const json = JSON.stringify(envelope, null, 2);
@@ -537,8 +547,9 @@ async function seed(reset: boolean): Promise<void> {
   // production. Every failure mode appears at least twice.
   const flavourCycle: Flavour[] = [
     'clean', 'low_confidence', 'clean', 'impossible', 'clean', 'fenced',
-    'low_confidence', 'clean', 'partial', 'unparseable', 'clean', 'impossible',
+    'low_confidence', 'clean', 'partial', 'unparseable', 'clean', 'injection',
     'clean', 'low_confidence', 'partial', 'clean', 'unparseable', 'clean',
+    'injection', 'clean', 'impossible', 'clean',
   ];
   let flavourAt = 0;
   let reviewedCounter = 0;
@@ -590,7 +601,15 @@ async function seed(reset: boolean): Promise<void> {
           screenType: 'post_insights',
         });
 
-        const needsHuman = routing.status === 'needs_review';
+        const instructionTextDetected = flavour === 'injection';
+        const injectionReasons = instructionTextDetected
+          ? [
+              'The model reported instruction-like text inside this image. It was told to ignore it, but this submission and this creator need a look.',
+            ]
+          : [];
+        const submissionLagHours = int(1, 96);
+
+        const needsHuman = routing.status === 'needs_review' || instructionTextDetected;
         // Deterministic rather than a coin flip: every third post that needs a
         // human is seeded as already worked through, so the dataset is
         // guaranteed to contain the verified-with-override state the audit
@@ -602,7 +621,9 @@ async function seed(reset: boolean): Promise<void> {
           ? 'needs_review'
           : alreadyVerified
             ? 'verified'
-            : routing.status;
+            : needsHuman
+              ? 'needs_review'
+              : routing.status;
 
         const overrides =
           alreadyVerified && flavour === 'impossible'
@@ -658,10 +679,23 @@ async function seed(reset: boolean): Promise<void> {
             plausibility,
             status: finalStatus,
             routingReasons: parseOk
-              ? routing.reasons
+              ? [...injectionReasons, ...routing.reasons]
               : ['The model returned no parseable JSON for this image.'],
+            instructionTextDetected,
             inputTokens: int(1_100, 1_900),
             outputTokens: int(120, 340),
+          },
+          trust: {
+            submissionLagHours,
+            withinSubmissionWindow: submissionLagHours <= 72,
+            // Absence is normal for a screenshot and is not a red flag.
+            exifPresent: false,
+            exifCaptureTimestamp: null,
+            flaggedForSpotAudit: chance(0.1),
+            spotAuditOutcome: null,
+            spotAuditAt: null,
+            publicCrossCheck: { status: 'not_attempted', checkedAt: null, publicLikes: null, publicComments: null, divergenceRatio: null, note: null },
+            historicalDeviation: null,
           },
           verifiedByOperatorId: alreadyVerified ? operatorId : null,
           verifiedAt: alreadyVerified ? new Date(postedAt.getTime() + 2 * 86_400_000) : null,

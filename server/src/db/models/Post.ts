@@ -64,6 +64,12 @@ const extractionRecordSchema = new Schema(
     },
     status: { type: String, required: true, enum: EXTRACTION_STATUSES, default: 'pending' },
     routingReasons: { type: [String], default: [] },
+    /**
+     * The model reported instruction-like text inside the image. Never
+     * auto-accepts, always alerts, and the creator's submission history is
+     * worth reviewing when this fires.
+     */
+    instructionTextDetected: { type: Boolean, default: false },
     inputTokens: { type: Number, default: null, min: 0 },
     outputTokens: { type: Number, default: null, min: 0 },
   },
@@ -191,6 +197,7 @@ postSchema.index({ 'extraction.status': 1, submittedAt: 1 });
 postSchema.index({ campaignId: 1, 'extraction.status': 1 });
 postSchema.index({ 'extraction.plausibility.passed': 1, 'extraction.status': 1 });
 postSchema.index({ 'trust.flaggedForSpotAudit': 1, 'trust.spotAuditOutcome': 1 });
+postSchema.index({ 'extraction.instructionTextDetected': 1 });
 postSchema.index({ campaignId: 1, creatorId: 1, postedAt: -1 });
 /**
  * Sparse unique on publicUrl: the same post must not be submitted twice, but
