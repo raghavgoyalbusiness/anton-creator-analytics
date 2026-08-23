@@ -1,0 +1,16 @@
+{
+  "name": "anton-creator-analytics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["shared", "server"],
+  "scripts": {
+    "typecheck": "tsc --build --verbose",
+    "test": "npm run test --workspace @anton/shared",
+    "db:seed": "npm run db:seed --workspace @anton/server",
+    "db:reset": "npm run db:reset --workspace @anton/server"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
