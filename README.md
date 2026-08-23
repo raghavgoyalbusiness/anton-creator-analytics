@@ -112,6 +112,15 @@ Four collections the brief did not enumerate but the three surfaces need:
 community as-is. Its exact bytes are hashed and pinned onto every consent record,
 so editing it later cannot retroactively change what someone agreed to.
 
-Two figures in it are defensible defaults I chose, not legal advice, and want
-confirming before real creators see it: 24-month data retention, 6-year consent
-retention.
+CONSENT.md is kept strictly creator-facing — no internal notes — because it is
+served verbatim into the consent gate and its exact bytes are what gets hashed.
+Anything addressed to you belongs here instead.
+
+**Two figures in it need your confirmation before real creators see them.** Both
+are defensible defaults I chose, not legal advice:
+
+- **24-month data retention** for profiles, metrics and screenshots. A round
+  number that outlasts a typical campaign reporting cycle.
+- **6-year consent retention**, outliving the data it covers. Mirrors the
+  standard UK contractual limitation period, on the reasoning that the evidence
+  we were permitted to hold something should outlive the thing itself.

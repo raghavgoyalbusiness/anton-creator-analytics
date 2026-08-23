@@ -689,7 +689,10 @@ async function seed(reset: boolean): Promise<void> {
         creatorId: c._id,
         campaignId: i < 18 ? campaignA : campaignB,
         issuedAt: daysAgo(47),
-        expiresAt: daysAgo(-30),
+        // Already expired, matching the 15-minute policy. Seeded links are
+        // history, not working credentials: run `npm run mint` for a live one.
+        expiresAt: new Date(daysAgo(47).getTime() + 15 * 60_000),
+        usedAt: opened ? daysAgo(46) : null,
         firstOpenedAt: opened ? daysAgo(46) : null,
         lastOpenedAt: opened ? daysAgo(int(3, 40)) : null,
         openCount: opened ? int(1, 9) : 0,
@@ -724,10 +727,10 @@ async function seed(reset: boolean): Promise<void> {
   console.log('\n[seed] extraction status distribution');
   for (const row of byStatus) console.log(`  ${String(row._id).padEnd(15)} ${row.n}`);
 
-  console.log('\n[seed] sample creator magic links (raw tokens shown once, only hashes stored)');
-  for (const m of magicLinks.slice(0, 3)) {
-    console.log(`  http://localhost:5210/c/${m.raw}`);
-  }
+  console.log(
+    '\n[seed] seeded magic links are already expired, matching the 15-minute policy.',
+  );
+  console.log('       run `npm run mint --workspace @anton/server` for a live one.');
   console.log(`\n[seed] brand share link\n  http://localhost:5210/r/${shareToken}\n`);
 
   await disconnectDb();

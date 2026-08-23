@@ -6,3 +6,6 @@ dist/
 .mongo-data/
 .storage/
 .DS_Store
+.mongo-test-data/
+.storage-test/
+server-uri

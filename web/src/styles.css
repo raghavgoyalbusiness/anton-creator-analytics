@@ -1,0 +1,62 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink: #10100e;
+  --color-paper: #fbfaf7;
+  --color-muted: #6b6a63;
+  --color-line: #e3e0d8;
+  --color-accent: #1f5f4a;
+  --color-accent-soft: #e8f0ec;
+  --color-warn: #8a5a10;
+  --color-warn-soft: #fbf1de;
+  --color-danger: #9b2c1f;
+  --color-danger-soft: #fbe9e6;
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-ink: #f2f0ea;
+    --color-paper: #14140f;
+    --color-muted: #9c9a90;
+    --color-line: #2c2b25;
+    --color-accent: #6fbfa1;
+    --color-accent-soft: #16241e;
+    --color-warn: #d9a441;
+    --color-warn-soft: #241d0f;
+    --color-danger: #e08579;
+    --color-danger-soft: #241310;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* Respects the iPhone home indicator and notch. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+/* Stops iOS Safari zooming when a form field is focused. */
+input,
+select,
+textarea,
+button {
+  font-size: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

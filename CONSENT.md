@@ -103,12 +103,6 @@ that stops working after a few minutes.
 After that we delete it. The consent record outlives the rest on purpose: it is
 the evidence that we were allowed to hold the rest.
 
-> **Note for Raghav, not for the community:** the 24-month figure and the 6-year
-> consent retention are placeholders I chose as defensible defaults, not legal
-> advice. Confirm both before this goes to real creators. The 6 years mirrors
-> the standard UK contractual limitation period; 24 months is simply a round
-> number that outlasts a typical campaign reporting cycle.
-
 ---
 
 ## What you can do, any time

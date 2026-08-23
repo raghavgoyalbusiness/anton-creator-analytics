@@ -34,7 +34,50 @@ const envSchema = z.object({
   /** Salt for the consent IP hash. Rotating it breaks nothing; it is one-way. */
   IP_HASH_SALT: z.string().min(16).default('dev-only-ip-salt-change-me'),
 
+  /** Bump when CONSENT.md changes materially; creators are re-asked. */
   CONSENT_SCOPE_VERSION: z.string().default('2026-08-v1'),
+
+  /* ------------------------------------------------------ security limits */
+
+  /** Magic links are short-lived and single-use: assume every one is forwarded. */
+  MAGIC_LINK_TTL_MINUTES: z.coerce.number().int().min(1).max(1440).default(15),
+  /** The session a token exchanges for. Cookie-backed, httpOnly. */
+  CREATOR_SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
+  /** Operator sessions are shorter: this account reads every creator's data. */
+  OPERATOR_SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(24).default(8),
+  /** Re-authentication window before a bulk export or bulk deletion. */
+  OPERATOR_REAUTH_WINDOW_MINUTES: z.coerce.number().int().min(1).max(120).default(10),
+
+  RATE_LIMIT_TOKEN_EXCHANGE_PER_IP_HOUR: z.coerce.number().int().min(1).default(20),
+  RATE_LIMIT_TOKEN_EXCHANGE_PER_CREATOR_HOUR: z.coerce.number().int().min(1).default(10),
+  RATE_LIMIT_UPLOADS_PER_CREATOR_HOUR: z.coerce.number().int().min(1).default(20),
+  RATE_LIMIT_UPLOADS_GLOBAL_DAY: z.coerce.number().int().min(1).default(2_000),
+
+  /* -------------------------------------------------- extraction spending */
+
+  /** Hard stop, not a warning. Reached means extraction refuses to run. */
+  EXTRACTION_DAILY_SPEND_CEILING_MINOR: z.coerce.number().int().min(0).default(5_000),
+  EXTRACTION_PER_CREATOR_DAILY_CAP: z.coerce.number().int().min(1).default(25),
+  EXTRACTION_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(5).default(2),
+  EXTRACTION_ALERT_EMAIL: z.string().optional(),
+
+  /* ------------------------------------------------------------ retention */
+
+  /** Purge horizon after a creator's last campaign ends. */
+  RETENTION_MONTHS: z.coerce.number().int().min(1).max(120).default(24),
+  /** Consent records outlive the data they cover; see CONSENT.md. */
+  CONSENT_RETENTION_YEARS: z.coerce.number().int().min(1).max(10).default(6),
+
+  /* -------------------------------------------------------- trust signals */
+
+  /** Submissions later than this are recorded as lower trust, not rejected. */
+  SUBMISSION_WINDOW_HOURS: z.coerce.number().int().min(1).default(72),
+  /** Fraction of posts flagged for live screen-share audit. */
+  SPOT_AUDIT_RATE: z.coerce.number().min(0).max(1).default(0.1),
+  /** Engagement rate deviating more than this multiple of the creator median. */
+  HISTORICAL_DEVIATION_MULTIPLE: z.coerce.number().min(1).default(3),
+  /** Best-effort public cross-check of the submitted post URL. */
+  PUBLIC_CROSSCHECK_ENABLED: z.enum(['true', 'false']).default('false'),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -59,6 +102,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     if (cached.STORAGE_DRIVER !== 's3') missing.push("STORAGE_DRIVER must be 's3'");
     if (cached.TOKEN_SECRET.startsWith('dev-only')) missing.push('TOKEN_SECRET (still the dev default)');
     if (cached.IP_HASH_SALT.startsWith('dev-only')) missing.push('IP_HASH_SALT (still the dev default)');
+    if (!cached.EXTRACTION_ALERT_EMAIL) {
+      missing.push('EXTRACTION_ALERT_EMAIL (spend-ceiling alerts would have nowhere to go)');
+    }
     if (missing.length > 0) {
       throw new Error(`Refusing to start in production without:\n  ${missing.join('\n  ')}`);
     }
