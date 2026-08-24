@@ -1,30 +1,146 @@
 @import 'tailwindcss';
 
+/**
+ * Anton design tokens.
+ *
+ * Colour choices here were validated with the data-viz palette validator
+ * against the actual page surfaces rather than eyeballed:
+ *   accent  #00794d light / #4fc79a dark — chroma >= 0.1, contrast >= 3:1
+ *   the chart pair (accent vs neutral) clears CVD dE 10.2 light / 13.2 dark
+ *
+ * The neutral chart colour is deliberately low-chroma: the benchmark bar is
+ * meant to read as ground against the campaign's figure, not as a second brand
+ * colour competing with it.
+ *
+ * Status colours cannot be separated by hue alone — amber and red at equal
+ * lightness are indistinguishable to a deuteranope, which is physics rather
+ * than a bad hex. They are therefore separated by LIGHTNESS as well, and every
+ * status surface in the UI ships an icon and a label so colour never carries
+ * meaning on its own.
+ */
+
 @theme {
-  --color-ink: #10100e;
+  /* ---------------------------------------------------------- surfaces */
   --color-paper: #fbfaf7;
-  --color-muted: #6b6a63;
-  --color-line: #e3e0d8;
-  --color-accent: #1f5f4a;
-  --color-accent-soft: #e8f0ec;
-  --color-warn: #8a5a10;
-  --color-warn-soft: #fbf1de;
-  --color-danger: #9b2c1f;
-  --color-danger-soft: #fbe9e6;
+  --color-surface: #ffffff;
+  --color-sunken: #f4f2ed;
+
+  /* --------------------------------------------------------------- ink */
+  --color-ink: #14130f;
+  --color-ink-secondary: #4b4a44;
+  --color-muted: #78766e;
+  --color-line: #e4e1d8;
+  --color-line-strong: #cfcbbe;
+
+  /* ------------------------------------------------------------ accent */
+  --color-accent: #00794d;
+  --color-accent-hover: #00633f;
+  --color-accent-ink: #005c3b;
+  --color-accent-soft: #e6f2ec;
+  --color-accent-line: #b3d8c6;
+
+  /* ------------------------------------------ status (paired w/ icons) */
+  --color-good: #0f7a3d;
+  --color-good-soft: #e7f3e9;
+  --color-good-line: #b7dcc0;
+
+  /* Warning sits lighter than danger on purpose: lightness carries the
+     distinction where hue cannot. */
+  --color-warn: #8a6100;
+  --color-warn-soft: #fbf2dd;
+  --color-warn-line: #e6d09a;
+
+  --color-danger: #a8231a;
+  --color-danger-soft: #fbe9e7;
+  --color-danger-line: #eabbb4;
+
+  /* ---------------------------------------------------- data-viz roles */
+  --color-viz-primary: #00794d;
+  --color-viz-primary-soft: #cfe6da;
+  --color-viz-neutral: #a8a59b;
+  --color-viz-neutral-soft: #e0ded7;
+  --color-viz-grid: #eae7df;
+  --color-viz-axis: #cfcbbe;
+
+  /* ------------------------------------------------------- type scale */
+  --text-display: 2.75rem;
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.025em;
+  --text-title: 1.75rem;
+  --text-title--line-height: 1.15;
+  --text-title--letter-spacing: -0.02em;
+  --text-heading: 1.125rem;
+  --text-heading--line-height: 1.35;
+  --text-heading--letter-spacing: -0.01em;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.6;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.45;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.4;
+  /* Figures in stat tiles and tables. Tabular by default via .tnum below. */
+  --text-figure: 2rem;
+  --text-figure--line-height: 1.1;
+  --text-figure--letter-spacing: -0.02em;
+
+  /* ---------------------------------------------------------- radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.125rem;
+
+  /* --------------------------------------------------------- elevation */
+  /* Restrained on purpose: this is an instrument panel, not a marketing
+     page. Depth separates layers; it never decorates. */
+  --shadow-raised: 0 1px 2px rgba(20, 19, 15, 0.05);
+  --shadow-overlay: 0 8px 28px -6px rgba(20, 19, 15, 0.16), 0 2px 6px rgba(20, 19, 15, 0.06);
+
+  /* ------------------------------------------------------------ motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 420ms;
 }
 
 @media (prefers-color-scheme: dark) {
   @theme {
-    --color-ink: #f2f0ea;
     --color-paper: #14140f;
-    --color-muted: #9c9a90;
-    --color-line: #2c2b25;
-    --color-accent: #6fbfa1;
-    --color-accent-soft: #16241e;
-    --color-warn: #d9a441;
+    --color-surface: #1c1c17;
+    --color-sunken: #100f0c;
+
+    --color-ink: #f4f2ea;
+    --color-ink-secondary: #c2bfb3;
+    --color-muted: #918e84;
+    --color-line: #2e2d26;
+    --color-line-strong: #454338;
+
+    --color-accent: #4fc79a;
+    --color-accent-hover: #6ed4ae;
+    --color-accent-ink: #4fc79a;
+    --color-accent-soft: #16261f;
+    --color-accent-line: #2c5344;
+
+    --color-good: #46b96a;
+    --color-good-soft: #14241a;
+    --color-good-line: #2b5238;
+
+    --color-warn: #dda63f;
     --color-warn-soft: #241d0f;
-    --color-danger: #e08579;
-    --color-danger-soft: #241310;
+    --color-warn-line: #4d3d1c;
+
+    --color-danger: #e8776a;
+    --color-danger-soft: #251310;
+    --color-danger-line: #5a2b25;
+
+    --color-viz-primary: #4fc79a;
+    --color-viz-primary-soft: #21402f;
+    --color-viz-neutral: #87857c;
+    --color-viz-neutral-soft: #33322c;
+    --color-viz-grid: #26251f;
+    --color-viz-axis: #454338;
+
+    --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-overlay: 0 8px 28px -6px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
   }
 }
 
@@ -38,7 +154,10 @@ body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   /* Respects the iPhone home indicator and notch. */
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
     env(safe-area-inset-left);
@@ -50,6 +169,29 @@ select,
 textarea,
 button {
   font-size: 16px;
+  font-family: inherit;
+}
+
+/**
+ * Figures line up in columns. Applied to every number in a table or stat tile:
+ * a metric that jitters as digits change is harder to scan and looks careless.
+ */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* One focus treatment everywhere, including for keyboard users in the queue. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* The queue is keyboard-driven; a visible marker beats a subtle one. */
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-ink);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -59,4 +201,10 @@ button {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Charts and tables scroll inside their own box; the page never scrolls sideways. */
+.scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }

@@ -96,7 +96,7 @@ export function DataTools(): ReactNode {
       {reauthFor ? (
         <Card className="border-warn/40">
           <h3 className="font-semibold text-warn">Confirm your password</h3>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 text-label text-muted">
             This action reads or deletes every creator's data at once, so a session that has
             been open a while is not enough on its own.
           </p>
@@ -133,7 +133,7 @@ export function DataTools(): ReactNode {
 
       <Card>
         <h3 className="font-semibold">Export posts</h3>
-        <p className="mt-1 text-sm text-muted">
+        <p className="mt-1 text-label text-muted">
           Every signed-off post with its metrics, provenance and source-image hash. A CSV
           that outlives its context still says where its numbers came from.
         </p>
@@ -176,7 +176,7 @@ export function DataTools(): ReactNode {
 
       <Card>
         <h3 className="font-semibold">Export the audit trail</h3>
-        <p className="mt-1 text-sm text-muted">
+        <p className="mt-1 text-label text-muted">
           Append-only record of every operator read, edit, override, export and share link.
           Take this before touching anything if you are investigating an incident.
         </p>
@@ -193,7 +193,7 @@ export function DataTools(): ReactNode {
 
       <Card className="border-danger/30">
         <h3 className="font-semibold text-danger">Retention purge</h3>
-        <p className="mt-1 text-sm text-muted">
+        <p className="mt-1 text-label text-muted">
           Permanently removes creators whose last campaign ended beyond the retention
           horizon — database rows and stored screenshots both. The dated consent record
           survives on its own longer clock.
@@ -223,7 +223,7 @@ export function DataTools(): ReactNode {
                   {preview.postsDeleted} posts and {preview.screenshotsDeleted} screenshots
                   would be permanently deleted. This cannot be undone.
                 </Notice>
-                <ul className="max-h-48 space-y-1 overflow-y-auto text-sm text-muted">
+                <ul className="max-h-48 space-y-1 overflow-y-auto text-label text-muted">
                   {preview.details.map((d) => (
                     <li key={d.creatorId} className="flex justify-between gap-3">
                       <span>{d.displayName}</span>
@@ -237,7 +237,7 @@ export function DataTools(): ReactNode {
                   ))}
                 </ul>
                 <label className="block">
-                  <span className="mb-1 block text-sm font-medium">Type PURGE to confirm</span>
+                  <span className="mb-1 block text-label font-medium">Type PURGE to confirm</span>
                   <input
                     className={inputClass}
                     value={purgeConfirm}

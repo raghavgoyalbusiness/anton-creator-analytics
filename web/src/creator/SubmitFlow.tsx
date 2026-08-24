@@ -163,7 +163,7 @@ export function SubmitFlow({
         </Field>
       ) : (
         <div>
-          <p className="text-sm text-muted">Campaign</p>
+          <p className="text-label text-muted">Campaign</p>
           <p className="font-medium">{campaign?.name}</p>
         </div>
       )}
@@ -177,10 +177,10 @@ export function SubmitFlow({
               onClick={() => setFormat(f)}
               disabled={busy}
               aria-pressed={effectiveFormat === f}
-              className={`min-h-12 rounded-xl border px-4 font-medium transition-colors ${
+              className={`min-h-12 rounded-[--radius-lg] border px-4 font-medium transition-colors ${
                 effectiveFormat === f
                   ? 'border-accent bg-accent-soft text-accent'
-                  : 'border-line text-ink hover:bg-line/30'
+                  : 'border-line text-ink hover:bg-sunken'
               }`}
             >
               {FORMAT_LABELS[f]}
@@ -229,13 +229,13 @@ export function SubmitFlow({
           onChange={(e) => void pickImage(e.target.files?.[0])}
         />
         {image ? (
-          <div className="rounded-xl border border-line p-3">
+          <div className="rounded-[--radius-lg] border border-line p-3">
             <img
               src={image.previewUrl}
               alt="The screenshot you are about to send"
-              className="mx-auto max-h-64 rounded-lg"
+              className="mx-auto max-h-64 rounded-[--radius-md]"
             />
-            <p className="mt-3 text-center text-xs text-muted">
+            <p className="mt-3 text-center text-caption text-muted">
               {image.width}×{image.height} · {formatBytes(image.bytes)}
               {image.originalBytes > image.bytes
                 ? ` (resized from ${formatBytes(image.originalBytes)})`
@@ -264,7 +264,7 @@ export function SubmitFlow({
 
       {error ? <Notice tone="danger">{error}</Notice> : null}
 
-      <div className="sticky bottom-0 -mx-5 border-t border-line bg-paper px-5 py-4">
+      <div className="sticky bottom-0 -mx-5 border-t border-line bg-surface px-5 py-4">
         {busy && stage !== 'preparing' ? (
           <Spinner label={stage === 'uploading' ? 'Uploading screenshot…' : 'Sending…'} />
         ) : (

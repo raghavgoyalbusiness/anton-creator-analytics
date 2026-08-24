@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import type { MetricKey, PostMetrics } from '@anton/shared';
 import { api, ApiError } from '../lib/api.js';
-import { Button, Card, Notice, Spinner, inputClass } from '../ui/primitives.jsx';
+import { Button, EmptyState, Notice, Spinner, inputClass } from '../ui/primitives.jsx';
 import { ReviewCard } from './ReviewCard.jsx';
 import { Nudges, Roster } from './Roster.jsx';
 import { Campaigns } from './Campaigns.jsx';
@@ -45,7 +45,7 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }): ReactNode {
   return (
     <div className="mx-auto w-full max-w-7xl px-6 py-6">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <nav className="flex gap-1 rounded-xl border border-line p-1" role="tablist">
+        <nav className="flex gap-1 rounded-[--radius-lg] border border-line p-1" role="tablist">
           {(
             [
               ['queue', 'Queue'],
@@ -60,7 +60,7 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }): ReactNode {
               role="tab"
               aria-selected={tab === key}
               onClick={() => setTab(key)}
-              className={`min-h-9 rounded-lg px-4 text-sm font-medium transition-colors ${
+              className={`min-h-9 rounded-[--radius-md] px-4 text-label font-medium transition-colors ${
                 tab === key ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'
               }`}
             >
@@ -106,12 +106,12 @@ function Login({ onSignedIn }: { onSignedIn: () => void }): ReactNode {
 
   return (
     <main className="mx-auto w-full max-w-sm px-6 py-20">
-      <h1 className="text-2xl font-semibold tracking-tight">Anton</h1>
-      <p className="mt-1 text-sm text-muted">Operator sign-in</p>
+      <h1 className="text-title font-semibold tracking-tight">Anton</h1>
+      <p className="mt-1 text-label text-muted">Operator sign-in</p>
 
       <form className="mt-8 space-y-4" onSubmit={(e) => void submit(e)}>
         <label className="block">
-          <span className="mb-1.5 block text-sm font-medium">Email</span>
+          <span className="mb-1.5 block text-label font-medium">Email</span>
           <input
             className={inputClass}
             type="email"
@@ -122,7 +122,7 @@ function Login({ onSignedIn }: { onSignedIn: () => void }): ReactNode {
           />
         </label>
         <label className="block">
-          <span className="mb-1.5 block text-sm font-medium">Password</span>
+          <span className="mb-1.5 block text-label font-medium">Password</span>
           <input
             className={inputClass}
             type="password"
@@ -133,9 +133,9 @@ function Login({ onSignedIn }: { onSignedIn: () => void }): ReactNode {
           />
         </label>
         <label className="block">
-          <span className="mb-1.5 block text-sm font-medium">Authenticator code</span>
+          <span className="mb-1.5 block text-label font-medium">Authenticator code</span>
           <input
-            className={`${inputClass} tabular-nums tracking-widest`}
+            className={`${inputClass} tnum tracking-widest`}
             inputMode="numeric"
             autoComplete="one-time-code"
             maxLength={6}
@@ -153,7 +153,7 @@ function Login({ onSignedIn }: { onSignedIn: () => void }): ReactNode {
         </Button>
       </form>
 
-      <p className="mt-6 text-xs text-muted">
+      <p className="mt-6 text-caption text-muted">
         Two-factor is required on this account. It can read every creator's private
         analytics.
       </p>
@@ -275,15 +275,15 @@ function Queue({ onSignedOut }: { onSignedOut: () => void }): ReactNode {
     <section>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Verification queue</h1>
-          <p className="text-sm text-muted">
+          <h1 className="text-title font-semibold tracking-tight">Verification queue</h1>
+          <p className="text-label text-muted">
             {items.length} in view
             {dashboard ? ` · ${dashboard.posts.needs_review ?? 0} awaiting review overall` : ''}
             {dashboard ? ` · £${(dashboard.spend.todayMinor / 100).toFixed(2)} extraction spend today` : ''}
           </p>
         </div>
         <select
-          className="rounded-lg border border-line bg-transparent px-3 py-2 text-sm"
+          className="rounded-[--radius-md] border border-line bg-transparent px-3 py-2 text-label"
           value={status}
           onChange={(e) => {
             setStatus(e.target.value as Status);
@@ -323,21 +323,18 @@ function Queue({ onSignedOut }: { onSignedOut: () => void }): ReactNode {
       {!data ? (
         <Spinner label="Loading the queue…" />
       ) : items.length === 0 ? (
-        <Card>
-          <p className="font-medium">Nothing here.</p>
-          <p className="mt-1 text-sm text-muted">
-            {status === 'needs_review'
-              ? 'Every submission has been dealt with.'
-              : 'No posts match this filter.'}
-          </p>
-        </Card>
+        <EmptyState title="Nothing here.">
+          {status === 'needs_review'
+            ? 'Every submission has been dealt with.'
+            : 'No posts match this filter.'}
+        </EmptyState>
       ) : current ? (
         <>
-          <div className="mb-4 flex items-center gap-3 text-sm text-muted">
+          <div className="mb-4 flex items-center gap-3 text-label text-muted">
             <span>
               {index + 1} of {items.length}
             </span>
-            <span className="text-xs">
+            <span className="text-caption">
               <kbd className="rounded border border-line px-1">J</kbd>/
               <kbd className="rounded border border-line px-1">K</kbd> move ·{' '}
               <kbd className="rounded border border-line px-1">A</kbd> approve

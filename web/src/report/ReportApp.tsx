@@ -1,7 +1,18 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api.js';
-import { Button, Card, Notice, Spinner, inputClass } from '../ui/primitives.jsx';
+import {
+  Badge,
+  Button,
+  Card,
+  Icon,
+  Notice,
+  SectionHeading,
+  Spinner,
+  Stat,
+  inputClass,
+} from '../ui/primitives.jsx';
+import { BarSeries, ComparisonBars, CoverageBar, InlineBar } from '../ui/charts.jsx';
 
 /* Types mirror the /api/report payload rather than the database. */
 
@@ -9,6 +20,14 @@ interface Figure {
   value: number | null;
   basis: string;
   unavailableReason: string | null;
+}
+
+interface GroupRow {
+  key: string;
+  posts: number;
+  totalReach: number | null;
+  totalEngagements: number | null;
+  medianEngagementRate: number | null;
 }
 
 interface ReportPayload {
@@ -62,11 +81,7 @@ interface ReportPayload {
       verifiedAt: string | null;
     }[];
   }[];
-  breakdowns: {
-    byCreativeAngle: GroupRow[];
-    byFormat: GroupRow[];
-    byNiche: GroupRow[];
-  };
+  breakdowns: { byCreativeAngle: GroupRow[]; byFormat: GroupRow[]; byNiche: GroupRow[] };
   topHooks: { hookText: string; postId: string; engagementRate: number | null; reach: number | null }[];
   conversions: {
     reportedRedemptions: number | null;
@@ -76,40 +91,43 @@ interface ReportPayload {
     codesWithData: number;
     statement: string;
   };
-  methodology: {
-    provenance: string;
-    verificationLimit: string;
-    exclusions: string;
-    spend: string;
-  };
+  methodology: { provenance: string; verificationLimit: string; exclusions: string; spend: string };
   link: { expiresAt: string; showsCompensation: boolean };
 }
 
-interface GroupRow {
-  key: string;
-  posts: number;
-  totalReach: number | null;
-  totalEngagements: number | null;
-  medianEngagementRate: number | null;
-}
+const SYMBOLS: Record<string, string> = { GBP: '£', USD: '$', EUR: '€', INR: '₹' };
 
 function money(m: { amountMinor: number; currency: string } | null): string {
   if (!m) return '—';
-  const symbols: Record<string, string> = { GBP: '£', USD: '$', EUR: '€', INR: '₹' };
-  return `${symbols[m.currency] ?? m.currency + ' '}${(m.amountMinor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `${SYMBOLS[m.currency] ?? m.currency + ' '}${(m.amountMinor / 100).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 function pence(minor: number | null, currency: string): string {
   if (minor === null) return '—';
-  const symbols: Record<string, string> = { GBP: '£', USD: '$', EUR: '€', INR: '₹' };
-  return `${symbols[currency] ?? currency + ' '}${(minor / 100).toFixed(2)}`;
+  return `${SYMBOLS[currency] ?? currency + ' '}${(minor / 100).toFixed(2)}`;
 }
+
+const METRIC_LABELS: Record<string, string> = {
+  reach: 'Reach',
+  impressions: 'Impressions',
+  likes: 'Likes',
+  comments: 'Comments',
+  shares: 'Shares',
+  saves: 'Saves',
+  profileVisits: 'Profile visits',
+  linkClicks: 'Link clicks',
+  videoViews: 'Video views',
+  watchTimeSeconds: 'Watch time',
+  followsFromPost: 'New follows',
+};
 
 export function ReportApp(): ReactNode {
   const { token } = useParams<{ token: string }>();
   const [data, setData] = useState<ReportPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
 
   const load = useCallback(
     async (withEmail?: string): Promise<void> => {
@@ -131,7 +149,7 @@ export function ReportApp(): ReactNode {
 
   if (error) {
     return (
-      <main className="mx-auto w-full max-w-lg px-6 py-20">
+      <main className="mx-auto w-full max-w-lg px-6 py-24">
         <Notice tone="warn" title="Cannot open this report">
           {error}
         </Notice>
@@ -141,7 +159,7 @@ export function ReportApp(): ReactNode {
 
   if (!data) {
     return (
-      <main className="mx-auto flex w-full max-w-lg px-6 py-20">
+      <main className="mx-auto flex w-full max-w-lg px-6 py-24">
         <Spinner label="Opening the report…" />
       </main>
     );
@@ -153,213 +171,309 @@ export function ReportApp(): ReactNode {
 
   const s = data.summary;
   const currency = data.campaign.currency;
+  const dateFmt: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-10">
-      <header className="mb-10">
-        <p className="text-sm text-muted">{data.brand?.name ?? 'Campaign report'}</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">{data.campaign.name}</h1>
-        <p className="mt-2 text-muted">
-          {new Date(data.campaign.startDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-          {' – '}
-          {new Date(data.campaign.endDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+    <main className="mx-auto w-full max-w-5xl px-6 pb-24 pt-12">
+      {/* ------------------------------------------------------------ head */}
+      <header className="mb-12">
+        <p className="text-label font-medium uppercase tracking-widest text-muted">
+          {data.brand?.name ?? 'Campaign report'}
+        </p>
+        <h1 className="mt-2 text-display font-semibold">{data.campaign.name}</h1>
+        <p className="mt-3 text-body text-ink-secondary">
+          {new Date(data.campaign.startDate).toLocaleDateString(undefined, dateFmt)} –{' '}
+          {new Date(data.campaign.endDate).toLocaleDateString(undefined, {
+            ...dateFmt,
+            year: 'numeric',
+          })}
           {data.campaign.objective ? ` · ${data.campaign.objective}` : ''}
         </p>
       </header>
 
-      {/* --------------------------------------------------------- headline */}
-      <section className="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Creators activated" value={s.creatorsActivated.toLocaleString()} />
-        <Stat label="Posts live" value={s.postsLive.toLocaleString()} />
-        <Stat
-          label="Total reach"
-          value={s.totalReach.value?.toLocaleString() ?? null}
-          unavailable={s.totalReach.unavailableReason}
-        />
-        <Stat
-          label="Total engagements"
-          value={s.totalEngagements.value?.toLocaleString() ?? null}
-          unavailable={s.totalEngagements.unavailableReason}
-          footnote={s.totalEngagements.basis}
-        />
-      </section>
-
-      <section className="mb-10 grid gap-4 sm:grid-cols-3">
-        <Stat label="Spend" value={money(s.spend)} footnote={data.methodology.spend} />
-        <Stat
-          label="Cost per 1,000 reach"
-          value={s.costPerThousandReach.value !== null ? pence(s.costPerThousandReach.value, currency) : null}
-          unavailable={s.costPerThousandReach.unavailableReason}
-        />
-        <Stat
-          label="Cost per 1,000 engagements"
-          value={
-            s.costPerThousandEngagements.value !== null
-              ? pence(s.costPerThousandEngagements.value, currency)
-              : null
-          }
-          unavailable={s.costPerThousandEngagements.unavailableReason}
-          footnote="Engagements, not “engaged reach”: neither platform reports how many of the people reached engaged."
-        />
-      </section>
-
-      {/* ------------------------------------------------------- comparison */}
-      {data.comparison ? (
-        <section className="mb-10">
-          <h2 className="mb-3 text-lg font-semibold">Against a single large creator</h2>
-          <Card>
-            <div className="grid gap-6 sm:grid-cols-2">
-              <div>
-                <p className="text-sm text-muted">This campaign</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums">
-                  {pence(data.comparison.campaignCostPerThousandReach, currency)}
-                </p>
-                <p className="text-sm text-muted">per 1,000 reach</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted">{data.comparison.label}</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums">
-                  {pence(data.comparison.benchmarkCostPerThousandReach, currency)}
-                </p>
-                <p className="text-sm text-muted">
-                  per 1,000 reach · {money(data.comparison.quotedFee)} for{' '}
-                  {data.comparison.quotedReach.toLocaleString()} reach
-                </p>
-              </div>
+      {/* -------------------------------------------------------- headline */}
+      {data.comparison && data.comparison.ratio !== null ? (
+        <section className="mb-12">
+          <Card className="overflow-hidden !p-0">
+            <div className="border-b border-line bg-accent-soft px-6 py-8 sm:px-8">
+              <p className="text-label font-medium uppercase tracking-widest text-accent-ink opacity-80">
+                Cost per 1,000 people reached
+              </p>
+              <p className="mt-3 text-display font-semibold text-accent-ink">
+                {data.comparison.ratio >= 1
+                  ? `${data.comparison.ratio.toFixed(1)}× cheaper`
+                  : `${(1 / data.comparison.ratio).toFixed(1)}× dearer`}
+              </p>
+              <p className="mt-2 max-w-xl text-body text-accent-ink opacity-90">
+                than the single large creator this campaign was weighed against.
+              </p>
             </div>
 
-            {data.comparison.ratio !== null ? (
-              <p className="mt-5 border-t border-line pt-4 text-lg">
-                {data.comparison.ratio >= 1 ? (
-                  <>
-                    This campaign reached people{' '}
-                    <span className="font-semibold text-accent">
-                      {data.comparison.ratio.toFixed(1)}× more cheaply
-                    </span>
-                    .
-                  </>
-                ) : (
-                  <>
-                    This campaign was{' '}
-                    <span className="font-semibold text-warn">
-                      {(1 / data.comparison.ratio).toFixed(1)}× more expensive
-                    </span>{' '}
-                    per 1,000 reach.
-                  </>
-                )}
-              </p>
-            ) : null}
+            <div className="px-6 py-7 sm:px-8">
+              <ComparisonBars
+                rows={[
+                  {
+                    label: 'This campaign',
+                    value: data.comparison.campaignCostPerThousandReach ?? 0,
+                    display: pence(data.comparison.campaignCostPerThousandReach, currency),
+                    isFigure: true,
+                    caption: `${s.creatorsActivated} creators · ${money(s.spend)} · ${
+                      s.totalReach.value?.toLocaleString() ?? '—'
+                    } reach`,
+                  },
+                  {
+                    label: data.comparison.label,
+                    value: data.comparison.benchmarkCostPerThousandReach,
+                    display: pence(data.comparison.benchmarkCostPerThousandReach, currency),
+                    isFigure: false,
+                    caption: `${money(data.comparison.quotedFee)} quoted for ${data.comparison.quotedReach.toLocaleString()} reach`,
+                  },
+                ]}
+                caption="Shorter is better — this is a cost, so the campaign wins by spending less to reach the same thousand people."
+              />
 
-            <Notice tone="warn">
-              <span className="font-semibold">This comparison figure was supplied by Anton, not measured.</span>{' '}
-              {data.comparison.sourceNote} It is a quoted rate for a hypothetical
-              alternative buy, not the result of a campaign that ran.
-            </Notice>
+              <div className="mt-6">
+                <Notice tone="warn" title="The comparison figure was supplied by Anton, not measured">
+                  {data.comparison.sourceNote} It is a quoted rate for a buy that did not happen,
+                  set against a campaign that did.
+                </Notice>
+              </div>
+            </div>
           </Card>
         </section>
       ) : null}
 
+      {/* --------------------------------------------------------- summary */}
+      <section className="mb-12">
+        <SectionHeading title="What ran" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat label="Creators activated" value={s.creatorsActivated.toLocaleString()} />
+          <Stat label="Posts live" value={s.postsLive.toLocaleString()} />
+          <Stat
+            label="People reached"
+            value={s.totalReach.value?.toLocaleString() ?? null}
+            unavailable={s.totalReach.unavailableReason}
+          />
+          <Stat
+            label="Engagements"
+            value={s.totalEngagements.value?.toLocaleString() ?? null}
+            unavailable={s.totalEngagements.unavailableReason}
+            footnote="Likes, comments, shares and saves"
+          />
+        </div>
+
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <Stat label="Spend" value={money(s.spend)} footnote="Agreed with the creators who took part" />
+          <Stat
+            label="Per 1,000 reach"
+            value={s.costPerThousandReach.value !== null ? pence(s.costPerThousandReach.value, currency) : null}
+            unavailable={s.costPerThousandReach.unavailableReason}
+            emphasis
+          />
+          <Stat
+            label="Per 1,000 engagements"
+            value={
+              s.costPerThousandEngagements.value !== null
+                ? pence(s.costPerThousandEngagements.value, currency)
+                : null
+            }
+            unavailable={s.costPerThousandEngagements.unavailableReason}
+            footnote="Engagements, not “engaged reach” — neither platform reports how many of those reached engaged"
+          />
+        </div>
+
+        <Card className="mt-3">
+          <p className="mb-3 text-label font-medium">What is counted</p>
+          <CoverageBar
+            segments={[
+              { key: 'in', label: 'included', count: s.coverage.included, tone: 'figure' },
+              { key: 'checking', label: 'still being checked', count: s.coverage.excludedNotVerified, tone: 'warn' },
+              { key: 'rejected', label: 'rejected', count: s.coverage.excludedRejected, tone: 'ground' },
+            ]}
+          />
+          <p className="mt-3 text-caption text-muted">
+            Posts still being checked are not counted as zero. They are simply not yet
+            established, and will appear here once they are.
+          </p>
+        </Card>
+      </section>
+
       {/* -------------------------------------------------------- creators */}
-      <section className="mb-10">
-        <h2 className="mb-3 text-lg font-semibold">Every creator, every post</h2>
-        <p className="mb-3 text-sm text-muted">
-          Expand a row to see the screenshot each number came from.
-        </p>
+      <section className="mb-12">
+        <SectionHeading
+          title="Every creator, every post"
+          hint="Expand a row to see the screenshot each number was read from."
+        />
         <div className="space-y-2">
           {data.creators
             .filter((c) => c.posts.length > 0)
             .sort((a, b) => (b.totalReach ?? 0) - (a.totalReach ?? 0))
-            .map((c) => (
-              <details key={c.creatorId} className="rounded-xl border border-line">
-                <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3 px-4 py-3">
-                  <span>
-                    <span className="font-medium">{c.displayName}</span>
-                    {c.handle ? <span className="text-muted"> @{c.handle}</span> : null}
-                    <span className="ml-2 text-xs text-muted">
-                      {c.nicheTags.join(', ')}
-                      {c.followers ? ` · ${c.followers.toLocaleString()} followers` : ` · ${c.followerBand}`}
+            .map((c, i, all) => {
+              const topReach = all[0]?.totalReach ?? 1;
+              return (
+                <details
+                  key={c.creatorId}
+                  className="group overflow-hidden rounded-[--radius-lg] border border-line bg-surface"
+                >
+                  <summary className="flex cursor-pointer list-none items-center gap-4 px-4 py-3.5 hover:bg-sunken">
+                    <span className="text-muted transition-transform duration-[--duration-fast] group-open:rotate-90">
+                      <Icon.chevron />
                     </span>
-                  </span>
-                  <span className="text-sm tabular-nums text-muted">
-                    {c.totalReach?.toLocaleString() ?? '—'} reach ·{' '}
-                    {c.totalEngagements?.toLocaleString() ?? '—'} engagements
-                    {c.agreedRate ? ` · ${money(c.agreedRate)}` : ''}
-                  </span>
-                </summary>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">
+                        {c.displayName}
+                        {c.handle ? (
+                          <span className="ml-1.5 font-normal text-muted">@{c.handle}</span>
+                        ) : null}
+                      </span>
+                      <span className="mt-0.5 block truncate text-caption text-muted">
+                        {c.nicheTags.join(' · ')}
+                        {c.followers
+                          ? ` · ${c.followers.toLocaleString()} followers`
+                          : ` · ${c.followerBand.replace(/_/g, ' ')}`}
+                        {c.agreedRate ? ` · ${money(c.agreedRate)}` : ''}
+                      </span>
+                    </span>
+                    <span className="hidden w-40 shrink-0 sm:block">
+                      <span className="tnum block text-right text-label font-medium">
+                        {c.totalReach?.toLocaleString() ?? '—'}
+                      </span>
+                      <InlineBar fraction={(c.totalReach ?? 0) / (topReach || 1)} />
+                      <span className="mt-1 block text-right text-caption text-muted">reach</span>
+                    </span>
+                  </summary>
 
-                <div className="space-y-4 border-t border-line px-4 py-4">
-                  {c.posts.map((p) => (
-                    <div key={p.postId} className="grid gap-4 sm:grid-cols-[10rem_1fr]">
-                      {p.sourceScreenshotUrl ? (
-                        <a href={p.sourceScreenshotUrl} target="_blank" rel="noreferrer noopener">
-                          <img
-                            src={p.sourceScreenshotUrl}
-                            alt="The Insights screenshot these numbers were read from"
-                            className="w-full rounded-lg border border-line"
-                          />
-                        </a>
-                      ) : (
-                        <div className="rounded-lg border border-line p-3 text-xs text-muted">
-                          No source image
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-sm font-medium">
-                          {p.format} · {new Date(p.postedAt).toLocaleDateString()}
-                          {p.publicUrl ? (
-                            <>
-                              {' · '}
-                              <a className="underline" href={p.publicUrl} target="_blank" rel="noreferrer noopener">
-                                view post
+                  <div className="space-y-5 border-t border-line bg-sunken/50 px-4 py-5">
+                    {c.posts.map((p) => (
+                      <article key={p.postId} className="grid gap-4 sm:grid-cols-[9rem_1fr]">
+                        {p.sourceScreenshotUrl ? (
+                          <a
+                            href={p.sourceScreenshotUrl}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="block"
+                          >
+                            <img
+                              src={p.sourceScreenshotUrl}
+                              alt={`The Insights screenshot ${c.displayName}'s numbers were read from`}
+                              className="w-full rounded-[--radius-md] border border-line shadow-[--shadow-raised]"
+                            />
+                            <span className="mt-1.5 flex items-center gap-1 text-caption text-muted">
+                              <Icon.external /> source
+                            </span>
+                          </a>
+                        ) : (
+                          <div className="rounded-[--radius-md] border border-dashed border-line p-3 text-caption text-muted">
+                            No source image
+                          </div>
+                        )}
+
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge tone={p.provenance.isPlatformVerified ? 'accent' : 'neutral'}>
+                              {p.provenance.label}
+                            </Badge>
+                            <span className="text-caption text-muted">
+                              {p.format.replace(/_/g, ' ')} ·{' '}
+                              {new Date(p.postedAt).toLocaleDateString(undefined, dateFmt)}
+                            </span>
+                            {p.publicUrl ? (
+                              <a
+                                className="flex items-center gap-1 text-caption text-accent-ink underline"
+                                href={p.publicUrl}
+                                target="_blank"
+                                rel="noreferrer noopener"
+                              >
+                                view post <Icon.external />
                               </a>
-                            </>
+                            ) : null}
+                          </div>
+
+                          {p.hookText ? (
+                            <blockquote className="mt-3 border-l-2 border-accent-line pl-3 text-body italic text-ink-secondary">
+                              “{p.hookText}”
+                            </blockquote>
                           ) : null}
-                        </p>
-                        {p.hookText ? <p className="mt-1 text-sm italic text-muted">“{p.hookText}”</p> : null}
-                        <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
-                          {Object.entries(p.metrics)
-                            .filter(([, v]) => v !== null)
-                            .map(([k, v]) => (
-                              <div key={k} className="flex justify-between gap-2">
-                                <dt className="text-muted">{k}</dt>
-                                <dd className="tabular-nums">{v?.toLocaleString()}</dd>
-                              </div>
-                            ))}
-                        </dl>
-                        <p
-                          className={`mt-3 inline-block rounded-full px-3 py-1 text-xs ${
-                            p.provenance.isPlatformVerified
-                              ? 'bg-accent-soft text-accent'
-                              : 'bg-line/40 text-muted'
-                          }`}
-                          title={p.provenance.detail}
-                        >
-                          {p.provenance.label}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </details>
-            ))}
+
+                          <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1.5 sm:grid-cols-3">
+                            {Object.entries(p.metrics)
+                              .filter(([, v]) => v !== null)
+                              .map(([k, v]) => (
+                                <div key={k} className="flex items-baseline justify-between gap-2 border-b border-line/70 pb-1">
+                                  <dt className="text-caption text-muted">{METRIC_LABELS[k] ?? k}</dt>
+                                  <dd className="tnum text-label font-medium">
+                                    {v?.toLocaleString()}
+                                  </dd>
+                                </div>
+                              ))}
+                          </dl>
+
+                          {p.engagementRate !== null ? (
+                            <p className="mt-3 text-caption text-muted">
+                              Engagement rate{' '}
+                              <span className="tnum font-medium text-ink-secondary">
+                                {(p.engagementRate * 100).toFixed(1)}%
+                              </span>
+                            </p>
+                          ) : null}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </details>
+              );
+            })}
         </div>
       </section>
 
       {/* ------------------------------------------------------ breakdowns */}
-      <section className="mb-10 grid gap-6 lg:grid-cols-3">
-        <Breakdown title="By creative angle" rows={data.breakdowns.byCreativeAngle} />
-        <Breakdown title="By format" rows={data.breakdowns.byFormat} />
-        <Breakdown title="By audience niche" rows={data.breakdowns.byNiche} />
+      <section className="mb-12">
+        <SectionHeading
+          title="What worked"
+          hint="Median engagement rate, so one viral post cannot crown a category. Post count in brackets."
+        />
+        <div className="grid gap-4 lg:grid-cols-3">
+          {(
+            [
+              ['Creative angle', data.breakdowns.byCreativeAngle],
+              ['Format', data.breakdowns.byFormat],
+              ['Audience niche', data.breakdowns.byNiche],
+            ] as [string, GroupRow[]][]
+          ).map(([title, rows]) => (
+            <Card key={title}>
+              <p className="mb-3 text-label font-medium">{title}</p>
+              <BarSeries
+                rows={rows.map((r) => ({
+                  key: r.key,
+                  label: r.key.replace(/[-_]/g, ' '),
+                  value: r.medianEngagementRate,
+                  display:
+                    r.medianEngagementRate !== null
+                      ? `${(r.medianEngagementRate * 100).toFixed(1)}%`
+                      : 'not measured',
+                  meta: `(${r.posts})`,
+                }))}
+              />
+            </Card>
+          ))}
+        </div>
       </section>
 
+      {/* ----------------------------------------------------------- hooks */}
       {data.topHooks.length > 0 ? (
-        <section className="mb-10">
-          <h2 className="mb-3 text-lg font-semibold">Hooks that worked hardest</h2>
+        <section className="mb-12">
+          <SectionHeading title="Hooks that worked hardest" hint="Opening lines, ranked by engagement rate." />
           <ol className="space-y-2">
-            {data.topHooks.map((h) => (
-              <li key={h.postId} className="flex justify-between gap-4 rounded-xl border border-line px-4 py-3">
-                <span className="italic">“{h.hookText}”</span>
-                <span className="shrink-0 tabular-nums text-muted">
+            {data.topHooks.map((h, i) => (
+              <li
+                key={h.postId}
+                className="flex items-center gap-4 rounded-[--radius-md] border border-line bg-surface px-4 py-3"
+              >
+                <span className="tnum w-5 shrink-0 text-label text-muted">{i + 1}</span>
+                <span className="min-w-0 flex-1 text-body italic text-ink-secondary">
+                  “{h.hookText}”
+                </span>
+                <span className="tnum shrink-0 text-label font-medium">
                   {h.engagementRate !== null ? `${(h.engagementRate * 100).toFixed(1)}%` : '—'}
                 </span>
               </li>
@@ -369,91 +483,59 @@ export function ReportApp(): ReactNode {
       ) : null}
 
       {/* ------------------------------------------------------ conversion */}
-      <section className="mb-10">
-        <h2 className="mb-3 text-lg font-semibold">Sales</h2>
+      <section className="mb-12">
+        <SectionHeading title="Sales" />
         {data.conversions.reportedRedemptions === null ? (
-          <Notice tone="info">{data.conversions.statement}</Notice>
+          <Notice tone="info" title="No conversion data">
+            {data.conversions.statement}
+          </Notice>
         ) : (
           <Card>
-            <div className="grid gap-6 sm:grid-cols-2">
-              <Stat label="Code redemptions" value={data.conversions.reportedRedemptions.toLocaleString()} />
-              <Stat label="Revenue" value={money(data.conversions.reportedRevenue)} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Stat
+                label="Code redemptions"
+                value={data.conversions.reportedRedemptions.toLocaleString()}
+              />
+              <Stat label="Revenue reported" value={money(data.conversions.reportedRevenue)} />
             </div>
-            <p className="mt-4 text-sm text-muted">{data.conversions.statement}</p>
+            <p className="mt-4 text-label text-muted">{data.conversions.statement}</p>
             {data.conversions.reportedBySource ? (
-              <p className="mt-1 text-xs text-muted">Source: {data.conversions.reportedBySource}</p>
+              <p className="mt-1 text-caption text-muted">
+                Source: {data.conversions.reportedBySource}
+              </p>
             ) : null}
           </Card>
         )}
       </section>
 
       {/* ----------------------------------------------------- methodology */}
-      <section className="border-t border-line pt-6">
-        <h2 className="mb-3 text-lg font-semibold">How to read these numbers</h2>
-        <div className="space-y-3 text-sm text-muted">
-          <p>{data.methodology.provenance}</p>
-          <p>{data.methodology.verificationLimit}</p>
-          <p>{data.methodology.exclusions}</p>
-          <p>{data.methodology.spend}</p>
+      <section className="border-t border-line pt-8">
+        <SectionHeading title="How to read these numbers" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          {(
+            [
+              ['Where they come from', data.methodology.provenance],
+              ['What they are not', data.methodology.verificationLimit],
+              ['What is counted', data.methodology.exclusions],
+              ['What spend means', data.methodology.spend],
+            ] as [string, string][]
+          ).map(([title, body]) => (
+            <div key={title}>
+              <p className="text-label font-medium">{title}</p>
+              <p className="mt-1 text-label leading-relaxed text-muted">{body}</p>
+            </div>
+          ))}
         </div>
-        <p className="mt-6 text-xs text-muted">
+        <p className="mt-8 text-caption text-muted">
           This link expires {new Date(data.link.expiresAt).toLocaleDateString()}. Please do not
-          forward it — ask Anton for a link of your own.
+          forward it — ask Anton for a link of your own, so we can tell you who has seen what.
         </p>
       </section>
     </main>
   );
 }
 
-function Stat({
-  label,
-  value,
-  unavailable,
-  footnote,
-}: {
-  label: string;
-  value: string | null;
-  unavailable?: string | null;
-  footnote?: string;
-}): ReactNode {
-  return (
-    <div className="rounded-xl border border-line p-4">
-      <p className="text-sm text-muted">{label}</p>
-      {value !== null ? (
-        <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
-      ) : (
-        <p className="mt-1 text-lg text-muted" title={unavailable ?? undefined}>
-          not captured
-        </p>
-      )}
-      {footnote ? <p className="mt-1 text-xs text-muted">{footnote}</p> : null}
-    </div>
-  );
-}
-
-function Breakdown({ title, rows }: { title: string; rows: GroupRow[] }): ReactNode {
-  return (
-    <div>
-      <h3 className="mb-2 font-semibold">{title}</h3>
-      {rows.length === 0 ? (
-        <p className="text-sm text-muted">Nothing recorded.</p>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-line">
-          {rows.map((r) => (
-            <div key={r.key} className="flex justify-between gap-3 border-b border-line/60 px-3 py-2 text-sm last:border-0">
-              <span className="truncate">{r.key.replace(/[-_]/g, ' ')}</span>
-              <span className="shrink-0 tabular-nums text-muted">
-                {r.medianEngagementRate !== null ? `${(r.medianEngagementRate * 100).toFixed(1)}%` : '—'}
-                <span className="ml-2 text-xs">({r.posts})</span>
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-      <p className="mt-1 text-xs text-muted">Median engagement rate, post count in brackets.</p>
-    </div>
-  );
-}
+/* ------------------------------------------------------------ email gate */
 
 function EmailGate({
   token,
@@ -496,14 +578,17 @@ function EmailGate({
   }
 
   return (
-    <main className="mx-auto w-full max-w-sm px-6 py-20">
-      <h1 className="text-xl font-semibold tracking-tight">Campaign report</h1>
-      <p className="mt-2 text-sm text-muted">{message}</p>
+    <main className="mx-auto w-full max-w-sm px-6 py-24">
+      <p className="text-label font-medium uppercase tracking-widest text-muted">Anton</p>
+      <h1 className="mt-2 text-title font-semibold">Campaign report</h1>
+      <p className="mt-2 text-body text-ink-secondary">{message}</p>
 
-      <div className="mt-6 space-y-3">
+      <div className="mt-8 space-y-3">
         <input
           className={inputClass}
           type="email"
+          inputMode="email"
+          autoComplete="email"
           placeholder="you@company.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -511,12 +596,14 @@ function EmailGate({
         />
         {sent ? (
           <input
-            className={`${inputClass} tabular-nums tracking-widest`}
+            className={`${inputClass} tnum tracking-[0.4em]`}
             inputMode="numeric"
+            autoComplete="one-time-code"
             maxLength={6}
             placeholder="000000"
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+            autoFocus
           />
         ) : null}
 
@@ -524,14 +611,15 @@ function EmailGate({
 
         <Button
           className="w-full"
-          disabled={busy || (sent ? code.length !== 6 : email.length < 5)}
+          loading={busy}
+          disabled={sent ? code.length !== 6 : email.length < 5}
           onClick={() => void (sent ? verify() : requestCode())}
         >
-          {busy ? 'Working…' : sent ? 'Open the report' : 'Send me a code'}
+          {sent ? 'Open the report' : 'Send me a code'}
         </Button>
       </div>
 
-      <p className="mt-6 text-xs text-muted">
+      <p className="mt-6 text-caption text-muted">
         We record which address opened this report and when.
       </p>
     </main>

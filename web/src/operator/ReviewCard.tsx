@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { METRIC_KEYS, type MetricKey, type PostMetrics } from '@anton/shared';
 import { api } from '../lib/api.js';
-import { Button, Notice, inputClass } from '../ui/primitives.jsx';
+import { Badge, Button, Notice, inputClass } from '../ui/primitives.jsx';
+import { ConfidenceMeter } from '../ui/charts.jsx';
 import { METRIC_LABELS, type QueueItem } from './types.js';
 
 const MIN_CONFIDENCE = 0.85;
@@ -123,13 +124,13 @@ export function ReviewCard({
             <img
               src={item.screenshotUrl}
               alt={`Insights screenshot submitted by ${item.creator.displayName}`}
-              className="max-h-[75vh] w-full rounded-xl border border-line object-contain"
+              className="max-h-[75vh] w-full rounded-[--radius-lg] border border-line object-contain"
             />
           </a>
         ) : (
           <Notice tone="warn">No screenshot is stored for this post.</Notice>
         )}
-        <p className="mt-2 text-xs text-muted">
+        <p className="mt-2 text-caption text-muted">
           Link expires in 60 seconds. Refresh the queue for a new one.
         </p>
       </div>
@@ -138,13 +139,13 @@ export function ReviewCard({
       <div className="space-y-4">
         <header>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-semibold">{item.creator.displayName}</h2>
-            <span className="text-sm text-muted">
+            <h2 className="text-heading font-semibold">{item.creator.displayName}</h2>
+            <span className="text-label text-muted">
               {item.creator.handle ? `@${item.creator.handle} · ` : ''}
               {item.platform} {item.format}
             </span>
           </div>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 text-label text-muted">
             {item.campaign.name} · posted{' '}
             {new Date(item.postedAt).toLocaleDateString(undefined, {
               day: 'numeric',
@@ -182,13 +183,13 @@ export function ReviewCard({
           </Notice>
         ) : null}
 
-        <div className="rounded-xl border border-line">
-          <table className="w-full text-sm">
+        <div className="rounded-[--radius-lg] border border-line">
+          <table className="w-full text-label">
             <thead>
-              <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+              <tr className="border-b border-line text-left text-caption font-medium uppercase tracking-wide text-muted">
                 <th className="px-3 py-2 font-medium">Metric</th>
                 <th className="px-3 py-2 font-medium">Value</th>
-                <th className="px-3 py-2 font-medium">Confidence</th>
+                <th className="px-3 py-2 text-right font-medium">Confidence</th>
               </tr>
             </thead>
             <tbody>
@@ -198,7 +199,7 @@ export function ReviewCard({
                 const flagged = flaggedFields.has(key);
                 const edited = draft[key] !== item.metrics[key];
                 return (
-                  <tr key={key} className="border-b border-line/60 last:border-0">
+                  <tr key={key} className="border-b border-line/70 last:border-0">
                     <td className="px-3 py-2">
                       <span className={flagged ? 'font-medium text-danger' : ''}>
                         {METRIC_LABELS[key]}
@@ -206,7 +207,7 @@ export function ReviewCard({
                     </td>
                     <td className="px-3 py-2">
                       <input
-                        className={`w-32 rounded-lg border px-2 py-1 tabular-nums ${
+                        className={`w-32 rounded-[--radius-md] border px-2 py-1 tnum ${
                           edited
                             ? 'border-accent bg-accent-soft'
                             : flagged
@@ -223,21 +224,15 @@ export function ReviewCard({
                       />
                       {edited ? (
                         <input
-                          className="mt-1 w-full rounded-lg border border-line bg-transparent px-2 py-1 text-xs"
+                          className="mt-1 w-full rounded-[--radius-md] border border-line bg-transparent px-2 py-1 text-caption"
                           placeholder="Why? (optional but kept forever)"
                           value={reasons[key] ?? ''}
                           onChange={(e) => setReasons((r) => ({ ...r, [key]: e.target.value }))}
                         />
                       ) : null}
                     </td>
-                    <td className="px-3 py-2 tabular-nums">
-                      {confidence === null ? (
-                        <span className="text-muted">—</span>
-                      ) : (
-                        <span className={low ? 'text-warn' : 'text-muted'}>
-                          {(confidence * 100).toFixed(0)}%
-                        </span>
-                      )}
+                    <td className="px-3 py-2">
+                      <ConfidenceMeter value={confidence} />
                     </td>
                   </tr>
                 );
@@ -254,7 +249,7 @@ export function ReviewCard({
         ) : null}
 
         {item.manualOverrides.length > 0 ? (
-          <details className="rounded-xl border border-line px-4 py-3 text-sm">
+          <details className="rounded-[--radius-lg] border border-line px-4 py-3 text-label">
             <summary className="cursor-pointer font-medium">
               {item.manualOverrides.length} earlier correction
               {item.manualOverrides.length === 1 ? '' : 's'}
@@ -275,14 +270,14 @@ export function ReviewCard({
         <TrustPanel item={item} />
 
         <details
-          className="rounded-xl border border-line px-4 py-3 text-sm"
+          className="rounded-[--radius-lg] border border-line px-4 py-3 text-label"
           open={showRaw}
           onToggle={(e) => {
             if ((e.target as HTMLDetailsElement).open) void loadRaw();
           }}
         >
           <summary className="cursor-pointer font-medium">Raw model output</summary>
-          <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-line/30 p-3 text-xs">
+          <pre className="mt-2 max-h-64 overflow-auto rounded-[--radius-md] bg-sunken p-3 text-caption">
             {rawText ?? 'Loading…'}
           </pre>
         </details>
@@ -309,13 +304,13 @@ export function ReviewCard({
         ) : (
           <div className="flex flex-wrap gap-2">
             <Button onClick={verify} disabled={busy}>
-              Approve <kbd className="ml-1 text-xs opacity-70">A</kbd>
+              Approve <kbd className="ml-1 text-caption opacity-70">A</kbd>
             </Button>
             <Button variant="secondary" onClick={() => setRejecting(true)} disabled={busy}>
-              Reject <kbd className="ml-1 text-xs opacity-70">R</kbd>
+              Reject <kbd className="ml-1 text-caption opacity-70">R</kbd>
             </Button>
             <Button variant="ghost" onClick={onSkip} disabled={busy}>
-              Skip <kbd className="ml-1 text-xs opacity-70">J</kbd>
+              Skip <kbd className="ml-1 text-caption opacity-70">J</kbd>
             </Button>
           </div>
         )}
@@ -361,7 +356,7 @@ function TrustPanel({ item }: { item: QueueItem }): ReactNode {
   }
 
   return (
-    <details className="rounded-xl border border-line px-4 py-3 text-sm">
+    <details className="rounded-[--radius-lg] border border-line px-4 py-3 text-label">
       <summary className="cursor-pointer font-medium">Trust signals</summary>
       <dl className="mt-2 space-y-1.5">
         {rows.map(([label, value]) => (
@@ -371,7 +366,7 @@ function TrustPanel({ item }: { item: QueueItem }): ReactNode {
           </div>
         ))}
       </dl>
-      <p className="mt-3 text-xs text-muted">
+      <p className="mt-3 text-caption text-muted">
         These are evidence, not verdicts. A screenshot is creator-reported and forgeable;
         none of this makes a number platform-verified.
       </p>

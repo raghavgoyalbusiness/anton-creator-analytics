@@ -99,7 +99,7 @@ export function MyData({ displayName }: { displayName: string }): ReactNode {
     <div className="space-y-4">
       <Card>
         <h2 className="font-semibold">If you shared your link</h2>
-        <p className="mt-1 text-sm text-muted">
+        <p className="mt-1 text-label text-muted">
           Signs you out on every device and cancels any unused links you have. Use this
           the moment you think someone else can open your page.
         </p>
@@ -110,7 +110,7 @@ export function MyData({ displayName }: { displayName: string }): ReactNode {
 
       <Card>
         <h2 className="font-semibold">Download everything</h2>
-        <p className="mt-1 text-sm text-muted">
+        <p className="mt-1 text-label text-muted">
           A file with every record we hold about you, {displayName}, including links to your
           screenshots. Those links work for a few minutes, so save the images if you want
           to keep them.
@@ -127,7 +127,7 @@ export function MyData({ displayName }: { displayName: string }): ReactNode {
 
       <Card>
         <h2 className="font-semibold">Stop future use</h2>
-        <p className="mt-1 text-sm text-muted">
+        <p className="mt-1 text-label text-muted">
           We stop using your data for anything new, but finished campaign reports stand.
           Use this if you want out of future campaigns without erasing past work.
         </p>
@@ -138,18 +138,18 @@ export function MyData({ displayName }: { displayName: string }): ReactNode {
 
       <Card className="border-danger/30">
         <h2 className="font-semibold text-danger">Delete everything</h2>
-        <p className="mt-1 text-sm text-muted">
+        <p className="mt-1 text-label text-muted">
           Removes your profile, your posts, your metrics and your screenshots. This cannot
           be undone.
         </p>
-        <p className="mt-3 text-sm text-muted">
+        <p className="mt-3 text-label text-muted">
           Two things stay, and we would rather say so than surprise you: reports already
           downloaded by a brand cannot be un-sent, and we keep the dated note that you
           consented and then withdrew — not your data, just the record that we were allowed
           to hold it.
         </p>
         <label className="mt-4 block">
-          <span className="mb-1.5 block text-sm font-medium">
+          <span className="mb-1.5 block text-label font-medium">
             Type DELETE to confirm
           </span>
           <input

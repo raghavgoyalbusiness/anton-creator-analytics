@@ -72,22 +72,22 @@ export function Campaigns(): ReactNode {
     <div className="space-y-6">
       {error ? <Notice tone="danger">{error}</Notice> : null}
 
-      <div className="overflow-hidden rounded-xl border border-line">
+      <div className="overflow-hidden rounded-[--radius-lg] border border-line">
         {campaigns.map((c) => (
           <button
             key={c.id}
             onClick={() => setSelected(c.id)}
-            className={`flex w-full flex-wrap items-center justify-between gap-3 border-b border-line/60 px-4 py-3 text-left last:border-0 ${
-              c.id === campaign?.id ? 'bg-accent-soft' : 'hover:bg-line/20'
+            className={`flex w-full flex-wrap items-center justify-between gap-3 border-b border-line/70 px-4 py-3 text-left last:border-0 ${
+              c.id === campaign?.id ? 'bg-accent-soft' : 'hover:bg-sunken'
             }`}
           >
             <span>
               <span className="font-medium">{c.name}</span>
-              <span className="ml-2 text-xs text-muted">
+              <span className="ml-2 text-caption text-muted">
                 {c.status} · {c.creators} creators · {c.posts} posts
               </span>
             </span>
-            <span className="text-sm text-muted">
+            <span className="text-label text-muted">
               {money(c.budgetTotal)} budget
               {c.hasBenchmark ? '' : ' · no benchmark set'}
             </span>
@@ -110,7 +110,7 @@ export function Campaigns(): ReactNode {
       {minted ? (
         <Card className="border-accent/40">
           <h3 className="font-semibold">Share link created</h3>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 text-label text-muted">
             Shown once. Closing this loses it — you would have to create another.
           </p>
           {minted.note ? (
@@ -119,7 +119,7 @@ export function Campaigns(): ReactNode {
             </div>
           ) : null}
           <input
-            className={`${inputClass} mt-3 font-mono text-xs`}
+            className={`${inputClass} mt-3 font-mono text-caption`}
             readOnly
             value={minted.url}
             onFocus={(e) => e.currentTarget.select()}
@@ -177,7 +177,7 @@ function BenchmarkEditor({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="font-semibold">Mega-influencer benchmark</h3>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 text-label text-muted">
             {campaign.hasBenchmark
               ? 'Set. The comparison panel appears in the brand report.'
               : 'Not set. The brand report will omit the comparison panel entirely.'}
@@ -196,7 +196,7 @@ function BenchmarkEditor({
             matters, and it is required.
           </Notice>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium">What is being compared</span>
+            <span className="mb-1 block text-label font-medium">What is being compared</span>
             <input
               className={inputClass}
               placeholder="1.4M-follower UK beauty creator, agency quote for one reel"
@@ -206,7 +206,7 @@ function BenchmarkEditor({
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1 block text-sm font-medium">Quoted fee ({campaign.currency})</span>
+              <span className="mb-1 block text-label font-medium">Quoted fee ({campaign.currency})</span>
               <input
                 className={inputClass}
                 inputMode="decimal"
@@ -216,7 +216,7 @@ function BenchmarkEditor({
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-sm font-medium">Quoted reach</span>
+              <span className="mb-1 block text-label font-medium">Quoted reach</span>
               <input
                 className={inputClass}
                 inputMode="numeric"
@@ -227,7 +227,7 @@ function BenchmarkEditor({
             </label>
           </div>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium">Where this figure came from</span>
+            <span className="mb-1 block text-label font-medium">Where this figure came from</span>
             <input
               className={inputClass}
               placeholder="Agency quote received by email, 2026-07-14"
@@ -312,7 +312,7 @@ function ShareLinks({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="font-semibold">Brand report links</h3>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 text-label text-muted">
             {links.filter((l) => !l.revokedAt).length} live ·{' '}
             {links.filter((l) => l.revokedAt).length} revoked
           </p>
@@ -323,7 +323,7 @@ function ShareLinks({
       {open ? (
         <div className="mt-4 space-y-3 border-t border-line pt-4">
           <label className="block">
-            <span className="mb-1 block text-sm font-medium">Label (for your reference)</span>
+            <span className="mb-1 block text-label font-medium">Label (for your reference)</span>
             <input
               className={inputClass}
               placeholder={`${campaign.name} — report`}
@@ -333,7 +333,7 @@ function ShareLinks({
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm font-medium">Expires after</span>
+            <span className="mb-1 block text-label font-medium">Expires after</span>
             <select
               className={`${inputClass} max-w-40`}
               value={days}
@@ -347,10 +347,10 @@ function ShareLinks({
             </select>
           </label>
 
-          <fieldset className="space-y-2 rounded-lg border border-line p-3">
-            <legend className="px-1 text-sm font-medium">What this brand sees</legend>
+          <fieldset className="space-y-2 rounded-[--radius-md] border border-line p-3">
+            <legend className="px-1 text-label font-medium">What this brand sees</legend>
 
-            <label className="flex items-start gap-2 text-sm">
+            <label className="flex items-start gap-2 text-label">
               <input
                 type="checkbox"
                 className="mt-0.5"
@@ -359,14 +359,14 @@ function ShareLinks({
               />
               <span>
                 Creator names and handles
-                <span className="block text-xs text-muted">
+                <span className="block text-caption text-muted">
                   Off shows niche and follower band instead. Worth switching off for a brand
                   that might approach your roster directly.
                 </span>
               </span>
             </label>
 
-            <label className="flex items-start gap-2 text-sm">
+            <label className="flex items-start gap-2 text-label">
               <input
                 type="checkbox"
                 className="mt-0.5"
@@ -378,14 +378,14 @@ function ShareLinks({
               />
               <span>
                 What each creator was paid
-                <span className="block text-xs text-muted">
+                <span className="block text-caption text-muted">
                   A brand does not need per-creator rates to read a performance report.
                   Switching this on forces the email gate on too.
                 </span>
               </span>
             </label>
 
-            <label className="flex items-start gap-2 text-sm">
+            <label className="flex items-start gap-2 text-label">
               <input
                 type="checkbox"
                 className="mt-0.5"
@@ -395,7 +395,7 @@ function ShareLinks({
               />
               <span>
                 Require an emailed code before opening
-                <span className="block text-xs text-muted">
+                <span className="block text-caption text-muted">
                   Records which address opened the report. Forced on when rates are shown.
                 </span>
               </span>
@@ -413,13 +413,13 @@ function ShareLinks({
       {links.length > 0 ? (
         <div className="mt-4 space-y-2 border-t border-line pt-4">
           {links.map((l) => (
-            <details key={l.id} className="rounded-lg border border-line">
-              <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
+            <details key={l.id} className="rounded-[--radius-md] border border-line">
+              <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 px-3 py-2 text-label">
                 <span>
                   <span className={l.revokedAt ? 'text-muted line-through' : 'font-medium'}>
                     {l.label}
                   </span>
-                  <span className="ml-2 text-xs text-muted">
+                  <span className="ml-2 text-caption text-muted">
                     {l.revokedAt
                       ? 'revoked'
                       : new Date(l.expiresAt) < new Date()
@@ -430,7 +430,7 @@ function ShareLinks({
                     {l.requireEmailGate ? ' · email gated' : ''}
                   </span>
                 </span>
-                <span className="flex items-center gap-3 text-xs text-muted">
+                <span className="flex items-center gap-3 text-caption text-muted">
                   <span>
                     {l.viewCount} view{l.viewCount === 1 ? '' : 's'}
                   </span>
@@ -447,7 +447,7 @@ function ShareLinks({
                   ) : null}
                 </span>
               </summary>
-              <div className="border-t border-line px-3 py-2 text-xs">
+              <div className="border-t border-line px-3 py-2 text-caption">
                 {l.recentViews.length === 0 ? (
                   <p className="text-muted">Not opened yet.</p>
                 ) : (

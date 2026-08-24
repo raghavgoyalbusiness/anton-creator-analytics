@@ -43,22 +43,39 @@ export function CreatorApp(): ReactNode {
       // With a token in the path, swap it for a session cookie, then strip it
       // from the address bar so it is not in history or over someone's
       // shoulder. Without one, an existing cookie may already be valid.
+      let exchangeError: ApiError | null = null;
       if (token) {
         try {
           await exchangeToken(token);
         } catch (err) {
-          if (cancelled) return;
-          setError(
-            err instanceof ApiError
-              ? { code: err.code, message: err.message }
-              : { code: 'unknown', message: 'This link could not be opened.' },
-          );
-          return;
+          exchangeError = err instanceof ApiError ? err : null;
         } finally {
           window.history.replaceState(null, '', '/c');
         }
       }
-      if (!cancelled) await load();
+      if (cancelled) return;
+
+      // A failed exchange is not necessarily a dead end. The link is
+      // single-use, so a double-mount in development, a refresh, or a back
+      // navigation can spend it on a request whose session we already hold.
+      // Try the session before deciding the link is broken.
+      try {
+        const data = await api.get<CreatorSessionResponse>('/api/creator/session');
+        if (!cancelled) {
+          setSession(data);
+          setError(null);
+        }
+        return;
+      } catch {
+        /* no usable session; fall through to reporting the real reason */
+      }
+
+      if (cancelled) return;
+      setError(
+        exchangeError
+          ? { code: exchangeError.code, message: exchangeError.message }
+          : { code: 'no_session', message: 'Open your Anton link to continue.' },
+      );
     }
 
     void boot();
@@ -76,7 +93,7 @@ export function CreatorApp(): ReactNode {
           {error.message}
         </Notice>
         {recoverable ? (
-          <p className="mt-4 text-sm text-muted">
+          <p className="mt-4 text-label text-muted">
             Links last 15 minutes and work once, so they are useless to anyone who finds
             one later. Message the community and we will send you a fresh one.
           </p>
@@ -109,11 +126,11 @@ export function CreatorApp(): ReactNode {
   return (
     <main className="mx-auto w-full max-w-md px-5 pb-10 pt-8">
       <header className="mb-6">
-        <p className="text-sm text-muted">Anton</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Hi {firstName}</h1>
+        <p className="text-label text-muted">Anton</p>
+        <h1 className="text-title font-semibold tracking-tight">Hi {firstName}</h1>
       </header>
 
-      <nav className="mb-6 grid grid-cols-3 gap-1 rounded-xl border border-line p-1" role="tablist">
+      <nav className="mb-6 grid grid-cols-3 gap-1 rounded-[--radius-lg] border border-line p-1" role="tablist">
         {(
           [
             ['submit', 'Submit'],
@@ -126,7 +143,7 @@ export function CreatorApp(): ReactNode {
             role="tab"
             aria-selected={tab === key}
             onClick={() => setTab(key)}
-            className={`min-h-10 rounded-lg text-sm font-medium transition-colors ${
+            className={`min-h-10 rounded-[--radius-md] text-label font-medium transition-colors ${
               tab === key ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'
             }`}
           >
@@ -150,7 +167,7 @@ export function CreatorApp(): ReactNode {
                 <Card key={s.id} className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate font-medium">{campaign?.name ?? 'Campaign'}</p>
-                    <p className="text-sm text-muted">
+                    <p className="text-label text-muted">
                       {FORMAT_LABELS[s.format]} ·{' '}
                       {new Date(s.postedAt).toLocaleDateString(undefined, {
                         day: 'numeric',
@@ -159,7 +176,7 @@ export function CreatorApp(): ReactNode {
                     </p>
                   </div>
                   <span
-                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${
+                    className={`shrink-0 rounded-full px-3 py-1 text-caption font-medium ${
                       s.state === 'rejected'
                         ? 'bg-danger-soft text-danger'
                         : s.state === 'processing'
@@ -182,7 +199,7 @@ export function CreatorApp(): ReactNode {
 
       {tab === 'data' ? <MyData displayName={firstName} /> : null}
 
-      <p className="mt-8 border-t border-line pt-4 text-center text-xs text-muted">
+      <p className="mt-8 border-t border-line pt-4 text-center text-caption text-muted">
         This page is personal to you. Do not forward your link — anyone who opens it can
         see your analytics. Use <span className="font-medium">My data</span> to sign out
         everywhere if you think it has been shared.

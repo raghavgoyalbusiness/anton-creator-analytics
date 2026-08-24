@@ -46,18 +46,18 @@ export function ConsentGate({
 
   return (
     <div className="mx-auto w-full max-w-2xl px-5 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Before we store anything</h1>
+      <h1 className="text-title font-semibold tracking-tight">Before we store anything</h1>
       <p className="mt-2 text-muted">
         {reason === 'document_changed'
           ? 'We have updated this agreement since you last read it, so we need to ask again.'
           : 'Read this, then tell us if you are happy to go ahead.'}
       </p>
 
-      <div className="mt-6 max-h-[55vh] overflow-y-auto rounded-2xl border border-line bg-line/15 p-5">
+      <div className="mt-6 max-h-[55vh] overflow-y-auto rounded-[--radius-xl] border border-line bg-sunken p-5">
         <Markdown source={text} />
       </div>
 
-      <p className="mt-3 text-xs text-muted">Version {version}</p>
+      <p className="mt-3 text-caption text-muted">Version {version}</p>
 
       {error ? (
         <div className="mt-4">
@@ -65,14 +65,14 @@ export function ConsentGate({
         </div>
       ) : null}
 
-      <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl border border-line p-4">
+      <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-[--radius-lg] border border-line p-4">
         <input
           type="checkbox"
           checked={ticked}
           onChange={(e) => setTicked(e.target.checked)}
           className="mt-0.5 size-5 accent-[var(--color-accent)]"
         />
-        <span className="text-sm leading-relaxed">
+        <span className="text-label leading-relaxed">
           I have read this and I agree. I understand I can download or delete everything
           at any time from this link.
         </span>
@@ -82,7 +82,7 @@ export function ConsentGate({
         <Button onClick={() => void submit()} disabled={!ticked || submitting}>
           {submitting ? 'Saving…' : 'I agree, continue'}
         </Button>
-        <p className="text-center text-xs text-muted">
+        <p className="text-center text-caption text-muted">
           Not sure? Close this page. Nothing is stored until you agree, and nothing
           bad happens if you decide not to.
         </p>

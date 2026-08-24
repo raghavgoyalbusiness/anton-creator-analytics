@@ -33,7 +33,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
     }
     if (part.startsWith('`') && part.endsWith('`')) {
       nodes.push(
-        <code key={key} className="rounded bg-line/50 px-1 py-0.5 text-[0.9em]">
+        <code key={key} className="rounded bg-sunken px-1 py-0.5 text-caption">
           {part.slice(1, -1)}
         </code>,
       );
@@ -130,10 +130,10 @@ export function Markdown({ source }: { source: string }): ReactNode {
       const level = heading[1].length;
       const content = renderInline(heading[2], `h-${key}`);
       const sizes: Record<number, string> = {
-        1: 'text-xl font-semibold mt-1 mb-3',
-        2: 'text-lg font-semibold mt-5 mb-2',
-        3: 'text-base font-semibold mt-4 mb-2',
-        4: 'text-sm font-semibold mt-3 mb-1.5',
+        1: 'text-title font-semibold mt-1 mb-3',
+        2: 'text-heading font-semibold mt-5 mb-2',
+        3: 'text-body font-semibold mt-4 mb-2',
+        4: 'text-label font-semibold mt-3 mb-1.5',
       };
       const className = sizes[level] ?? sizes[4] ?? '';
       blocks.push(
@@ -160,7 +160,7 @@ export function Markdown({ source }: { source: string }): ReactNode {
       i -= 1;
       blocks.push(
         <div key={`t-${key++}`} className="mb-4 overflow-x-auto">
-          <table className="w-full border-collapse text-left text-sm">
+          <table className="w-full border-collapse text-left text-label">
             <thead>
               <tr>
                 {table.header.map((cell, c) => (
@@ -174,7 +174,7 @@ export function Markdown({ source }: { source: string }): ReactNode {
               {table.rows.map((row, r) => (
                 <tr key={r}>
                   {row.map((cell, c) => (
-                    <td key={c} className="border-b border-line/60 py-2 pr-4 align-top">
+                    <td key={c} className="border-b border-line/70 py-2 pr-4 align-top">
                       {renderInline(cell, `td-${r}-${c}`)}
                     </td>
                   ))}
@@ -221,5 +221,5 @@ export function Markdown({ source }: { source: string }): ReactNode {
   }
 
   flushAll();
-  return <div className="text-[0.95rem] text-ink">{blocks}</div>;
+  return <div className="text-body text-ink">{blocks}</div>;
 }

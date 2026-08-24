@@ -89,11 +89,11 @@ export function Roster(): ReactNode {
           {invites.warning}
         </Notice>
         <Card>
-          <p className="mb-2 text-sm text-muted">
+          <p className="mb-2 text-label text-muted">
             Shown once. Closing this loses them; you would have to mint again.
           </p>
           <textarea
-            className={`${inputClass} font-mono text-xs`}
+            className={`${inputClass} font-mono text-caption`}
             rows={Math.min(16, invites.links.length + 1)}
             readOnly
             value={text}
@@ -157,8 +157,8 @@ export function Roster(): ReactNode {
       {error ? <Notice tone="danger">{error}</Notice> : null}
 
       {selected.size > 0 ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-accent/40 bg-accent-soft px-4 py-3">
-          <span className="text-sm font-medium text-accent">{selected.size} selected</span>
+        <div className="flex flex-wrap items-center gap-3 rounded-[--radius-lg] border border-accent/40 bg-accent-soft px-4 py-3">
+          <span className="text-label font-medium text-accent">{selected.size} selected</span>
           <Button onClick={() => void invite()}>Mint invite links</Button>
           <Button variant="ghost" onClick={() => setSelected(new Set())}>
             Clear
@@ -169,10 +169,10 @@ export function Roster(): ReactNode {
       {!data ? (
         <Spinner label="Loading the roster…" />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line">
-          <table className="w-full min-w-[56rem] text-sm">
+        <div className="overflow-x-auto rounded-[--radius-lg] border border-line">
+          <table className="w-full min-w-[56rem] text-label">
             <thead>
-              <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+              <tr className="border-b border-line text-left text-caption uppercase tracking-wide text-muted">
                 <th className="px-3 py-2">
                   <input
                     type="checkbox"
@@ -193,7 +193,7 @@ export function Roster(): ReactNode {
             </thead>
             <tbody>
               {creators.map((c) => (
-                <tr key={c.id} className="border-b border-line/60 last:border-0 hover:bg-line/20">
+                <tr key={c.id} className="border-b border-line/70 last:border-0 hover:bg-sunken">
                   <td className="px-3 py-2">
                     <input
                       type="checkbox"
@@ -210,16 +210,16 @@ export function Roster(): ReactNode {
                   </td>
                   <td className="px-3 py-2">
                     <div className="font-medium">{c.displayName}</div>
-                    <div className="text-xs text-muted">
+                    <div className="text-caption text-muted">
                       {c.handles.map((h) => `@${h.handle}`).join(', ')}
                       {c.city ? ` · ${c.city}` : ''}
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-xs text-muted">{c.nicheTags.join(', ') || '—'}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">
+                  <td className="px-3 py-2 text-caption text-muted">{c.nicheTags.join(', ') || '—'}</td>
+                  <td className="px-3 py-2 text-right tnum">
                     {c.followers?.toLocaleString() ?? '—'}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">
+                  <td className="px-3 py-2 text-right tnum">
                     {c.medianEngagementRate === null ? (
                       <span className="text-muted" title="No signed-off posts yet — not the same as zero">
                         not measured
@@ -228,15 +228,15 @@ export function Roster(): ReactNode {
                       `${(c.medianEngagementRate * 100).toFixed(1)}%`
                     )}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{c.reportablePosts}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">
+                  <td className="px-3 py-2 text-right tnum">{c.reportablePosts}</td>
+                  <td className="px-3 py-2 text-right tnum">
                     {c.campaignsCompleted}/{c.campaignsJoined}
                   </td>
                   <td className="px-3 py-2">
                     {c.hasConsent ? (
-                      <span className="text-xs text-accent">on record</span>
+                      <span className="text-caption text-accent">on record</span>
                     ) : (
-                      <span className="text-xs text-warn">none</span>
+                      <span className="text-caption text-warn">none</span>
                     )}
                   </td>
                 </tr>
@@ -246,7 +246,7 @@ export function Roster(): ReactNode {
         </div>
       )}
 
-      <p className="text-xs text-muted">
+      <p className="text-caption text-muted">
         Median, not mean: one viral post should not decide who gets the next campaign.
         Only posts you have signed off count towards it.
       </p>
@@ -303,7 +303,7 @@ export function Nudges(): ReactNode {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <label className="text-sm text-muted">Stuck for more than</label>
+        <label className="text-label text-muted">Stuck for more than</label>
         <select
           className={`${inputClass} max-w-28`}
           value={days}
@@ -315,7 +315,7 @@ export function Nudges(): ReactNode {
             </option>
           ))}
         </select>
-        <span className="text-sm text-muted">{data.total} in total</span>
+        <span className="text-label text-muted">{data.total} in total</span>
       </div>
 
       {groups.map(([title, note, rows]) => (
@@ -323,22 +323,22 @@ export function Nudges(): ReactNode {
           <h3 className="font-semibold">
             {title} <span className="font-normal text-muted">({rows.length})</span>
           </h3>
-          <p className="mb-2 text-sm text-muted">{note}</p>
+          <p className="mb-2 text-label text-muted">{note}</p>
           {rows.length === 0 ? (
-            <p className="text-sm text-muted">Nobody.</p>
+            <p className="text-label text-muted">Nobody.</p>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-line">
+            <div className="overflow-hidden rounded-[--radius-lg] border border-line">
               {rows.map((n, i) => (
                 <div
                   key={`${n.creatorId}-${i}`}
-                  className="flex flex-wrap items-center justify-between gap-2 border-b border-line/60 px-4 py-2.5 last:border-0"
+                  className="flex flex-wrap items-center justify-between gap-2 border-b border-line/70 px-4 py-2.5 last:border-0"
                 >
                   <div>
                     <span className="font-medium">{n.displayName}</span>
                     {n.handle ? <span className="text-muted"> @{n.handle}</span> : null}
-                    <span className="text-sm text-muted"> · {n.campaignName}</span>
+                    <span className="text-label text-muted"> · {n.campaignName}</span>
                   </div>
-                  <span className="text-sm text-muted">
+                  <span className="text-label text-muted">
                     {n.daysWaiting !== null ? `${n.daysWaiting} days` : ''}
                   </span>
                 </div>
