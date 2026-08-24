@@ -10,7 +10,7 @@
  *   npm run db:reset         drop everything first, then insert
  */
 
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { Types } from 'mongoose';
 import {
   EMPTY_METRICS,
@@ -38,6 +38,9 @@ import {
 } from '../db/models/index.js';
 import { loadEnv } from '../config/env.js';
 import { hashIp, loadConsentDocument } from '../config/consent.js';
+import { generateRecoveryCodes, hashPassword, totpUri } from '../lib/operator-session.js';
+import { getStorage } from '../storage/index.js';
+import { renderSyntheticPanel } from './seed-images.js';
 
 /* ------------------------------------------------------------ determinism */
 
@@ -358,14 +361,22 @@ async function seed(reset: boolean): Promise<void> {
 
   /* Operator */
   const operatorId = new Types.ObjectId();
+  const DEV_PASSWORD = 'anton-dev-password';
+  // Fixed so the authenticator entry survives a reseed. Development only: the
+  // production guard in env.ts refuses to boot with dev defaults in place.
+  const DEV_TOTP_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+  const recovery = await generateRecoveryCodes(4);
+
   await OperatorModel.create({
     _id: operatorId,
     email: 'ops@anton.example',
     displayName: 'Anton Operator',
-    // Placeholder. Real hashing lands with the auth surface in step 5.
-    passwordHash: 'argon2id$PLACEHOLDER$seed-account-cannot-log-in',
+    passwordHash: await hashPassword(DEV_PASSWORD),
     role: 'owner',
     lastLoginAt: daysAgo(1),
+    totpSecret: DEV_TOTP_SECRET,
+    totpEnrolledAt: daysAgo(60),
+    recoveryCodeHashes: recovery.hashes,
   });
 
   /* Brands */
@@ -644,7 +655,7 @@ async function seed(reset: boolean): Promise<void> {
             ? { ...storedMetrics, reach: overrides[0]?.to ?? storedMetrics.reach, impressions: overrides[0]?.to ?? storedMetrics.impressions }
             : storedMetrics;
 
-        const imageKey = `screenshots/${campaignId.toHexString()}/${creator._id.toHexString()}/${randomBytes(8).toString('hex')}.jpg`;
+        const imageKey = `creators/${creator._id.toHexString()}/${randomUUID()}.jpg`;
 
         posts.push({
           creatorId: creator._id,
@@ -712,6 +723,24 @@ async function seed(reset: boolean): Promise<void> {
   await PostModel.insertMany(posts);
   console.log(`[seed] ${posts.length} posts`);
 
+  // Write a synthetic panel per post so the verification queue actually has an
+  // image to show. Clearly watermarked as sample data.
+  const storage = getStorage();
+  let written = 0;
+  for (const post of posts) {
+    const key = (post.extraction as { sourceImageKey: string }).sourceImageKey;
+    const creator = creators.find((c) => String(c._id) === String(post.creatorId));
+    const image = await renderSyntheticPanel({
+      handle: creator?.handle ?? 'creator',
+      platform: String(post.platform),
+      format: String(post.format),
+      metrics: post.metrics as PostMetrics,
+    });
+    await storage.writeObject(key, image, 'image/jpeg');
+    written += 1;
+  }
+  console.log(`[seed] ${written} synthetic screenshots written to storage`);
+
   /* Links. Only hashes are stored; the raw tokens are printed once, here. */
   const magicLinks = creators.slice(0, 26).map((c, i) => {
     const token = randomBytes(32).toString('base64url');
@@ -767,8 +796,15 @@ async function seed(reset: boolean): Promise<void> {
   console.log('       run `npm run mint --workspace @anton/server` for a live one.');
   console.log(`\n[seed] brand share link\n  http://localhost:5210/r/${shareToken}\n`);
 
+  console.log('\n[seed] operator sign-in (development only)');
+  console.log('  email     ops@anton.example');
+  console.log(`  password  ${DEV_PASSWORD}`);
+  console.log('  2FA       add this to your authenticator app:');
+  console.log(`            ${totpUri('ops@anton.example', DEV_TOTP_SECRET)}`);
+  console.log(`  recovery  ${recovery.plain.join('  ')}`);
+
   await disconnectDb();
-  console.log('[seed] done');
+  console.log('\n[seed] done');
 }
 
 const reset = process.argv.includes('--reset');
