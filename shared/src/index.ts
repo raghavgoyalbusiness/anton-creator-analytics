@@ -14,3 +14,4 @@ export * from './schemas/common.js';
 export * from './schemas/metrics.js';
 export * from './schemas/vision.js';
 export * from './schemas/entities.js';
+export * from './metrics/report.js';

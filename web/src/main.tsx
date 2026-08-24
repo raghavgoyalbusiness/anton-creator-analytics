@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { CreatorApp } from './creator/CreatorApp.jsx';
 import { OperatorApp } from './operator/OperatorApp.jsx';
+import { ReportApp } from './report/ReportApp.jsx';
 import './styles.css';
 
 const root = document.getElementById('root');
@@ -15,6 +16,7 @@ createRoot(root).render(
         <Route path="/c/:token" element={<CreatorApp />} />
         <Route path="/c" element={<CreatorApp />} />
         <Route path="/ops" element={<OperatorApp />} />
+        <Route path="/r/:token" element={<ReportApp />} />
         <Route path="*" element={<Navigate to="/c" replace />} />
       </Routes>
     </BrowserRouter>

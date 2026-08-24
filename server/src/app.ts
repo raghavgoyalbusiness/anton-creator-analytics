@@ -8,6 +8,7 @@ import { creatorRouter } from './routes/creator.js';
 import { operatorAuthRouter } from './routes/operator-auth.js';
 import { operatorQueueRouter } from './routes/operator-queue.js';
 import { operatorRosterRouter } from './routes/operator-roster.js';
+import { shareAdminRouter, shareRouter } from './routes/share.js';
 import { storageRouter } from './routes/storage.js';
 
 export function createApp(): Express {
@@ -67,6 +68,9 @@ export function createApp(): Express {
   app.use('/api/operator/auth', operatorAuthRouter);
   app.use('/api/operator', operatorQueueRouter);
   app.use('/api/operator', operatorRosterRouter);
+  app.use('/api/operator', shareAdminRouter);
+  // Public, token-gated. Mounted last so it cannot shadow an operator route.
+  app.use('/api/report', shareRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: { code: 'not_found', message: 'No such endpoint.' } });
