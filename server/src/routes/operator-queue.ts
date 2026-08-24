@@ -239,7 +239,32 @@ operatorQueueRouter.post(
     }
 
     const now = new Date();
-    const before = post.metrics as PostMetrics;
+
+    /**
+     * Snapshot the current values as plain primitives before comparing. The
+     * hydrated document's metrics is a Mongoose subdocument; reading through it
+     * repeatedly during the diff invites subtle mismatches, and these values are
+     * about to be written into an audit record that must be exact.
+     */
+    const before = Object.fromEntries(
+      METRIC_KEYS.map((k) => [k, post.metrics[k] ?? null]),
+    ) as PostMetrics;
+
+    /**
+     * Optimistic concurrency guard.
+     *
+     * The override chain is the product. If two operators open the same post
+     * and both decide it, an unguarded read-then-write has them both diff
+     * against the same baseline: the second correction records from the
+     * ORIGINAL value rather than from the first correction, and the chain reads
+     * as two independent edits instead of a sequence. Pinning every metric to
+     * the value we read means the second writer matches nothing and is told to
+     * reload rather than silently corrupting the trail.
+     */
+    const concurrencyGuard: Record<string, unknown> = { _id: post._id };
+    for (const key of METRIC_KEYS) {
+      concurrencyGuard[`metrics.${key}`] = before[key];
+    }
 
     const overrides = METRIC_KEYS.flatMap((field: MetricKey) => {
       const from = before[field] ?? null;
@@ -258,8 +283,8 @@ operatorQueueRouter.post(
     });
 
     if (body.decision === 'reject') {
-      await PostModel.updateOne(
-        { _id: post._id },
+      const rejected = await PostModel.updateOne(
+        concurrencyGuard,
         {
           $set: {
             'extraction.status': 'rejected',
@@ -270,6 +295,13 @@ operatorQueueRouter.post(
           ...(overrides.length > 0 ? { $push: { manualOverrides: { $each: overrides } } } : {}),
         },
       );
+
+      if (rejected.matchedCount === 0) {
+        throw ApiError.conflict(
+          'changed_underneath',
+          'Someone else changed this post while you were reviewing it. Reload and look again.',
+        );
+      }
 
       await recordAudit({
         actorKind: 'operator',
@@ -286,8 +318,8 @@ operatorQueueRouter.post(
       return;
     }
 
-    await PostModel.updateOne(
-      { _id: post._id },
+    const verified = await PostModel.updateOne(
+      concurrencyGuard,
       {
         $set: {
           metrics: body.metrics,
@@ -301,6 +333,13 @@ operatorQueueRouter.post(
         ...(overrides.length > 0 ? { $push: { manualOverrides: { $each: overrides } } } : {}),
       },
     );
+
+    if (verified.matchedCount === 0) {
+      throw ApiError.conflict(
+        'changed_underneath',
+        'Someone else changed this post while you were reviewing it. Reload and look again.',
+      );
+    }
 
     await recordAudit({
       actorKind: 'operator',

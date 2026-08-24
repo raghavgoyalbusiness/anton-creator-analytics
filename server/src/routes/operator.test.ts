@@ -330,8 +330,56 @@ describe('verify and reject', () => {
     const saveOverrides = post?.manualOverrides.filter((o) => o.field === 'saves') ?? [];
     // Both corrections survive. A keyed Record would have lost the first.
     expect(saveOverrides).toHaveLength(2);
-    expect(saveOverrides[0]).toMatchObject({ from: 30, to: 87 });
-    expect(saveOverrides[1]).toMatchObject({ from: 87, to: 91 });
+    // Asserted as a chain rather than by index: what matters is that the second
+    // correction starts where the first ended, so the trail reads 30 -> 87 -> 91
+    // rather than as two independent edits from the original value.
+    const chain = saveOverrides.map((o) => [o.from, o.to]);
+    expect(chain).toEqual([
+      [30, 87],
+      [87, 91],
+    ]);
+  });
+
+  /**
+   * The route guards its write with the metric values it read, so a second
+   * operator whose read went stale matches nothing and is refused.
+   *
+   * The race itself cannot be staged from outside the process — anything this
+   * test changes before the request is simply what the route then reads. So
+   * this exercises the mechanism the guard depends on: that a filter pinned to
+   * superseded values matches no document.
+   */
+  it('a write pinned to superseded metric values matches nothing', async () => {
+    const before = await PostModel.findById(postId).lean();
+    const pinned: Record<string, unknown> = { _id: postId };
+    for (const [key, value] of Object.entries(before?.metrics ?? {})) {
+      pinned[`metrics.${key}`] = value;
+    }
+
+    // Someone else lands a change first.
+    await PostModel.updateOne({ _id: postId }, { $set: { 'metrics.saves': 55 } });
+
+    const stale = await PostModel.updateOne(pinned, {
+      $set: { 'metrics.saves': 91 },
+      $push: { manualOverrides: { field: 'saves', from: 30, to: 91, by: operatorId, at: new Date(), reason: null } },
+    });
+
+    expect(stale.matchedCount).toBe(0);
+
+    // Nothing was written: a corrupt chain is worse than a refused edit.
+    const after = await PostModel.findById(postId).lean();
+    expect(after?.manualOverrides).toHaveLength(0);
+    expect(after?.metrics.saves).toBe(55);
+  });
+
+  it('a write pinned to current metric values succeeds', async () => {
+    const before = await PostModel.findById(postId).lean();
+    const pinned: Record<string, unknown> = { _id: postId };
+    for (const [key, value] of Object.entries(before?.metrics ?? {})) {
+      pinned[`metrics.${key}`] = value;
+    }
+    const fresh = await PostModel.updateOne(pinned, { $set: { 'metrics.saves': 91 } });
+    expect(fresh.matchedCount).toBe(1);
   });
 
   it('records an override that clears a metric to null', async () => {
