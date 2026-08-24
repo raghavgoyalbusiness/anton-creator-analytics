@@ -22,7 +22,7 @@ import { ApiError } from '../lib/errors.js';
 import { asyncRoute, parseBody, parseQuery } from '../lib/validate.js';
 import { AUDIT, recordAudit } from '../lib/audit.js';
 import { hashIp } from '../config/consent.js';
-import { clientIp } from '../lib/creator-session.js';
+import { clientIp, revokeAllCreatorSessions } from '../lib/creator-session.js';
 import { mintToken } from '../lib/tokens.js';
 import { loadEnv } from '../config/env.js';
 import { HOUR_MS } from '../lib/rate-limit.js';
@@ -357,7 +357,6 @@ operatorRosterRouter.post(
       throw ApiError.badRequest('bad_id', 'Not a valid creator id.');
     }
     const { operator } = getOperator(req);
-    const { revokeAllCreatorSessions } = await import('../lib/creator-session.js');
 
     const links = await MagicLinkModel.updateMany(
       { creatorId: new Types.ObjectId(creatorId), revokedAt: null },

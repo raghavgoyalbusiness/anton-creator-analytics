@@ -29,7 +29,9 @@ import {
 } from '../db/models/index.js';
 import { ApiError } from '../lib/errors.js';
 import { asyncRoute, parseBody } from '../lib/validate.js';
-import { hashToken, looksLikeToken } from '../lib/tokens.js';
+import { hashToken, looksLikeToken, mintToken } from '../lib/tokens.js';
+import { getOperator } from '../lib/operator-session.js';
+import { loadEnv } from '../config/env.js';
 import { hashIp } from '../config/consent.js';
 import { clientIp, userAgentOf } from '../lib/creator-session.js';
 import { AUDIT, recordAudit } from '../lib/audit.js';
@@ -399,8 +401,6 @@ const createShareSchema = z.object({
 shareAdminRouter.post(
   '/share-links',
   asyncRoute(async (req, res) => {
-    const { getOperator } = await import('../lib/operator-session.js');
-    const { mintToken } = await import('../lib/tokens.js');
     const body = parseBody(createShareSchema, req);
     const { operator } = getOperator(req);
 
@@ -444,7 +444,6 @@ shareAdminRouter.post(
       ipHash: hashIp(clientIp(req)),
     });
 
-    const { loadEnv } = await import('../config/env.js');
     res.status(201).json({
       id: link._id.toString(),
       // Shown once.
@@ -493,7 +492,6 @@ shareAdminRouter.get(
 shareAdminRouter.post(
   '/share-links/:linkId/revoke',
   asyncRoute(async (req, res) => {
-    const { getOperator } = await import('../lib/operator-session.js');
     const linkId = req.params.linkId;
     if (typeof linkId !== 'string' || !/^[a-f0-9]{24}$/i.test(linkId)) {
       throw ApiError.badRequest('bad_id', 'Not a valid link id.');

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { METRIC_KEYS, type MetricKey, type PostMetrics } from '@anton/shared';
+import { api } from '../lib/api.js';
 import { Button, Notice, inputClass } from '../ui/primitives.jsx';
 import { METRIC_LABELS, type QueueItem } from './types.js';
 
@@ -87,7 +88,6 @@ export function ReviewCard({
   async function loadRaw(): Promise<void> {
     setShowRaw(true);
     if (rawText !== null) return;
-    const { api } = await import('../lib/api.js');
     try {
       const res = await api.get<{ rawResponse: string | null }>(
         `/api/operator/posts/${item.id}/raw`,

@@ -47,7 +47,7 @@ downloads a MongoDB binary (~66 MB) and needs network access. Set `MONGODB_URI`
 to use Atlas instead.
 
 ```bash
-npm test               # 83 shared + 164 server = 247 tests
+npm test               # 83 shared + 177 server = 260 tests
 npm run typecheck
 ```
 
@@ -68,6 +68,11 @@ npm run typecheck
 | Creator | `/c/:token` | Magic link exchanged once for an httpOnly session cookie |
 | Operator | `/ops` | Email + password (Argon2id) + mandatory TOTP |
 | Brand report | `/r/:token` | Share token, mandatory expiry, optional email gate |
+
+The operator has five tabs: **Queue** (keyboard-driven review), **Roster**
+(median engagement, bulk invite), **Nudges**, **Campaigns** (benchmark + brand
+share links), and **Data** (export + retention purge, both behind a fresh
+password check).
 
 Sign in as the operator with the credentials the seed prints. Creator links
 expire in 15 minutes and work once, so mint a fresh one:

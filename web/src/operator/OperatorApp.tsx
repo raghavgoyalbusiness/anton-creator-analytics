@@ -4,6 +4,8 @@ import { api, ApiError } from '../lib/api.js';
 import { Button, Card, Notice, Spinner, inputClass } from '../ui/primitives.jsx';
 import { ReviewCard } from './ReviewCard.jsx';
 import { Nudges, Roster } from './Roster.jsx';
+import { Campaigns } from './Campaigns.jsx';
+import { DataTools } from './DataTools.jsx';
 import type { DashboardResponse, QueueItem, QueueResponse } from './types.js';
 
 type Status = 'needs_review' | 'pending' | 'auto_accepted' | 'verified' | 'rejected' | 'all';
@@ -29,7 +31,7 @@ export function OperatorApp(): ReactNode {
   return <Shell onSignedOut={() => setSignedIn(false)} />;
 }
 
-type Tab = 'queue' | 'roster' | 'nudges';
+type Tab = 'queue' | 'roster' | 'nudges' | 'campaigns' | 'data';
 
 /** The operator shell. Queue first, because that is the daily job. */
 function Shell({ onSignedOut }: { onSignedOut: () => void }): ReactNode {
@@ -49,6 +51,8 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }): ReactNode {
               ['queue', 'Queue'],
               ['roster', 'Roster'],
               ['nudges', 'Nudges'],
+              ['campaigns', 'Campaigns'],
+              ['data', 'Data'],
             ] as [Tab, string][]
           ).map(([key, label]) => (
             <button
@@ -72,6 +76,8 @@ function Shell({ onSignedOut }: { onSignedOut: () => void }): ReactNode {
       {tab === 'queue' ? <Queue onSignedOut={onSignedOut} /> : null}
       {tab === 'roster' ? <Roster /> : null}
       {tab === 'nudges' ? <Nudges /> : null}
+      {tab === 'campaigns' ? <Campaigns /> : null}
+      {tab === 'data' ? <DataTools /> : null}
     </div>
   );
 }
