@@ -9,6 +9,7 @@ import { operatorAuthRouter } from './routes/operator-auth.js';
 import { operatorQueueRouter } from './routes/operator-queue.js';
 import { operatorRosterRouter } from './routes/operator-roster.js';
 import { shareAdminRouter, shareRouter } from './routes/share.js';
+import { operatorExportRouter } from './routes/operator-export.js';
 import { storageRouter } from './routes/storage.js';
 
 export function createApp(): Express {
@@ -69,6 +70,7 @@ export function createApp(): Express {
   app.use('/api/operator', operatorQueueRouter);
   app.use('/api/operator', operatorRosterRouter);
   app.use('/api/operator', shareAdminRouter);
+  app.use('/api/operator', operatorExportRouter);
   // Public, token-gated. Mounted last so it cannot shadow an operator route.
   app.use('/api/report', shareRouter);
 

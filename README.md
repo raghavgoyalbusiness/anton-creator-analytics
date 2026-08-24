@@ -47,19 +47,63 @@ downloads a MongoDB binary (~66 MB) and needs network access. Set `MONGODB_URI`
 to use Atlas instead.
 
 ```bash
-npm test               # 83 tests: parser + plausibility rules
+npm test               # 83 shared + 164 server = 247 tests
 npm run typecheck
 ```
 
-## Build order
+## Build order — all seven done
 
-1. **Schemas, types, zod validators, seed** — done
+1. Schemas, types, zod validators, seed
 2. Creator magic-link flow, consent capture, screenshot upload
 3. Extraction pipeline with confidence routing and plausibility rules
 4. Operator verification queue
 5. Campaign and roster management
 6. Brand share view
 7. Nudge and export tooling
+
+## Three surfaces
+
+| Surface | Path | Auth |
+| --- | --- | --- |
+| Creator | `/c/:token` | Magic link exchanged once for an httpOnly session cookie |
+| Operator | `/ops` | Email + password (Argon2id) + mandatory TOTP |
+| Brand report | `/r/:token` | Share token, mandatory expiry, optional email gate |
+
+Sign in as the operator with the credentials the seed prints. Creator links
+expire in 15 minutes and work once, so mint a fresh one:
+
+```bash
+npm run mint --workspace @anton/server
+```
+
+## Scheduled work
+
+```bash
+npm run extract --workspace @anton/server        # drain pending extractions
+npm run purge --workspace @anton/server          # retention dry run
+npm run purge --workspace @anton/server -- --apply
+```
+
+`extract` needs `ANTHROPIC_API_KEY` and refuses to start without it. `purge` is
+a dry run unless you pass `--apply`.
+
+## Security posture
+
+- Magic links: 15-minute TTL, single-use, exchanged for an httpOnly cookie.
+  There is no durable credential in JavaScript.
+- Operator: Argon2id at the OWASP floor, TOTP mandatory with no grace period,
+  8-hour sessions, fresh password check before bulk export or deletion.
+- Uploads: server-generated keys only, magic-byte validation, EXIF recorded then
+  stripped, 5-minute presign, 60-second read URLs, per-creator and global caps.
+- The extraction prompt treats the image as data and never as instructions; a
+  detection sets `instruction_text_detected`, blocks auto-accept, and alerts.
+- Every operator action is in an append-only audit log with no update path.
+- Retention is enforced by [purge.ts](server/src/retention/purge.ts), not just
+  promised in a document.
+
+See [BREACH.md](BREACH.md) for the incident procedure and
+[BRAND-DATA-TERMS.md](BRAND-DATA-TERMS.md) for the clauses to put in a brand
+agreement before issuing a share link.
 
 ## The rules that matter
 

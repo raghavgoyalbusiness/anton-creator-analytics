@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "mint": "tsx src/scripts/mint-link.ts",
-    "extract": "tsx src/scripts/extract.ts"
+    "extract": "tsx src/scripts/extract.ts",
+    "purge": "tsx src/scripts/purge.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.1",
