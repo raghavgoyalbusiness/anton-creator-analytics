@@ -3,6 +3,7 @@ import type { MetricKey, PostMetrics } from '@anton/shared';
 import { api, ApiError } from '../lib/api.js';
 import { Button, Card, Notice, Spinner, inputClass } from '../ui/primitives.jsx';
 import { ReviewCard } from './ReviewCard.jsx';
+import { Nudges, Roster } from './Roster.jsx';
 import type { DashboardResponse, QueueItem, QueueResponse } from './types.js';
 
 type Status = 'needs_review' | 'pending' | 'auto_accepted' | 'verified' | 'rejected' | 'all';
@@ -25,7 +26,54 @@ export function OperatorApp(): ReactNode {
     );
   }
   if (!signedIn) return <Login onSignedIn={() => setSignedIn(true)} />;
-  return <Queue onSignedOut={() => setSignedIn(false)} />;
+  return <Shell onSignedOut={() => setSignedIn(false)} />;
+}
+
+type Tab = 'queue' | 'roster' | 'nudges';
+
+/** The operator shell. Queue first, because that is the daily job. */
+function Shell({ onSignedOut }: { onSignedOut: () => void }): ReactNode {
+  const [tab, setTab] = useState<Tab>('queue');
+
+  async function signOut(): Promise<void> {
+    await api.post('/api/operator/auth/logout', {}).catch(() => undefined);
+    onSignedOut();
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-7xl px-6 py-6">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <nav className="flex gap-1 rounded-xl border border-line p-1" role="tablist">
+          {(
+            [
+              ['queue', 'Queue'],
+              ['roster', 'Roster'],
+              ['nudges', 'Nudges'],
+            ] as [Tab, string][]
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => setTab(key)}
+              className={`min-h-9 rounded-lg px-4 text-sm font-medium transition-colors ${
+                tab === key ? 'bg-accent-soft text-accent' : 'text-muted hover:text-ink'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+        <Button variant="ghost" onClick={() => void signOut()}>
+          Sign out
+        </Button>
+      </header>
+
+      {tab === 'queue' ? <Queue onSignedOut={onSignedOut} /> : null}
+      {tab === 'roster' ? <Roster /> : null}
+      {tab === 'nudges' ? <Nudges /> : null}
+    </div>
+  );
 }
 
 /* ------------------------------------------------------------------ login */
@@ -217,42 +265,33 @@ function Queue({ onSignedOut }: { onSignedOut: () => void }): ReactNode {
     return () => clearTimeout(t);
   }, [flash]);
 
-  async function signOut(): Promise<void> {
-    await api.post('/api/operator/auth/logout', {}).catch(() => undefined);
-    onSignedOut();
-  }
-
   return (
-    <main className="mx-auto w-full max-w-7xl px-6 py-6">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <section>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Verification queue</h1>
           <p className="text-sm text-muted">
             {items.length} in view
             {dashboard ? ` · ${dashboard.posts.needs_review ?? 0} awaiting review overall` : ''}
+            {dashboard ? ` · £${(dashboard.spend.todayMinor / 100).toFixed(2)} extraction spend today` : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <select
-            className="rounded-lg border border-line bg-transparent px-3 py-2 text-sm"
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value as Status);
-              setIndex(0);
-            }}
-          >
-            <option value="needs_review">Needs review</option>
-            <option value="pending">Pending extraction</option>
-            <option value="auto_accepted">Auto-accepted</option>
-            <option value="verified">Verified</option>
-            <option value="rejected">Rejected</option>
-            <option value="all">All</option>
-          </select>
-          <Button variant="ghost" onClick={() => void signOut()}>
-            Sign out
-          </Button>
-        </div>
-      </header>
+        <select
+          className="rounded-lg border border-line bg-transparent px-3 py-2 text-sm"
+          value={status}
+          onChange={(e) => {
+            setStatus(e.target.value as Status);
+            setIndex(0);
+          }}
+        >
+          <option value="needs_review">Needs review</option>
+          <option value="pending">Pending extraction</option>
+          <option value="auto_accepted">Auto-accepted</option>
+          <option value="verified">Verified</option>
+          <option value="rejected">Rejected</option>
+          <option value="all">All</option>
+        </select>
+      </div>
 
       {dashboard && dashboard.instructionTextDetected > 0 ? (
         <div className="mb-4">
@@ -307,6 +346,6 @@ function Queue({ onSignedOut }: { onSignedOut: () => void }): ReactNode {
           />
         </>
       ) : null}
-    </main>
+    </section>
   );
 }
