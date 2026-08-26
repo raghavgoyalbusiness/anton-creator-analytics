@@ -77,10 +77,4 @@ export const METRICS_BY_FORMAT: Readonly<Record<PostFormat, readonly MetricKey[]
   ],
 });
 
-export function isMetricKey(value: string): value is MetricKey {
-  return (METRIC_KEYS as readonly string[]).includes(value);
-}
 
-export function metricIsExpectedForFormat(format: PostFormat, key: MetricKey): boolean {
-  return METRICS_BY_FORMAT[format].includes(key);
-}

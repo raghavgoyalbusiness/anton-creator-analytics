@@ -31,13 +31,6 @@ export function parseQuery<T>(schema: ZodType<T>, req: Request): T {
   return result.data;
 }
 
-export function parseParams<T>(schema: ZodType<T>, req: Request): T {
-  const result = schema.safeParse(req.params);
-  if (!result.success) {
-    throw ApiError.badRequest('validation_failed', 'Invalid path parameters.');
-  }
-  return result.data;
-}
 
 /** Wraps an async handler so a rejected promise reaches the error middleware. */
 export function asyncRoute(

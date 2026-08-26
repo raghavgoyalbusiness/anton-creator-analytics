@@ -308,7 +308,7 @@ export function ReportApp(): ReactNode {
           {data.creators
             .filter((c) => c.posts.length > 0)
             .sort((a, b) => (b.totalReach ?? 0) - (a.totalReach ?? 0))
-            .map((c, i, all) => {
+            .map((c, _i, all) => {
               const topReach = all[0]?.totalReach ?? 1;
               return (
                 <details

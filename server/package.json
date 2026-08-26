@@ -12,7 +12,8 @@
     "test": "vitest run",
     "mint": "tsx src/scripts/mint-link.ts",
     "extract": "tsx src/scripts/extract.ts",
-    "purge": "tsx src/scripts/purge.ts"
+    "purge": "tsx src/scripts/purge.ts",
+    "smoke": "tsx src/scripts/smoke.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.1",

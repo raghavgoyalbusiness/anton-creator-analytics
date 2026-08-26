@@ -1,4 +1,4 @@
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { hash as argon2Hash, verify as argon2Verify } from '@node-rs/argon2';
 import type { NextFunction, Request, Response } from 'express';
 import type { HydratedDocument, Types } from 'mongoose';
@@ -357,9 +357,3 @@ export function clearOperatorCookie(res: Response): void {
   res.clearCookie(OPERATOR_COOKIE, { path: '/' });
 }
 
-/** Constant-time string compare, for anything not covered by argon2. */
-export function safeEqual(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, 'utf8');
-  const bufB = Buffer.from(b, 'utf8');
-  return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
-}

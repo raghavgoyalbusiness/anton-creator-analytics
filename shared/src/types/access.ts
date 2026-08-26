@@ -53,12 +53,3 @@ export interface ShareLink {
   readonly issuedByOperatorId: string;
   readonly createdAt: Date;
 }
-
-export function isLinkUsable(
-  link: Pick<MagicLink | ShareLink, 'expiresAt' | 'revokedAt'>,
-  now: Date,
-): boolean {
-  if (link.revokedAt !== null) return false;
-  if (link.expiresAt !== null && link.expiresAt.getTime() <= now.getTime()) return false;
-  return true;
-}

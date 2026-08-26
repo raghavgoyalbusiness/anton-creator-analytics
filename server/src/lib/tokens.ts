@@ -1,4 +1,4 @@
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 /**
  * Magic-link and share tokens.
@@ -21,13 +21,6 @@ export function hashToken(raw: string): string {
   return createHash('sha256').update(raw, 'utf8').digest('hex');
 }
 
-/** Constant-time comparison of two hex digests. */
-export function tokenHashesMatch(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, 'utf8');
-  const bufB = Buffer.from(b, 'utf8');
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
 
 /** Shape check before any database lookup, so malformed input costs nothing. */
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;

@@ -114,7 +114,3 @@ export function getVisionClient(): VisionClient {
   return cached;
 }
 
-/** Tests inject a stub through this. */
-export function setVisionClient(client: VisionClient | null): void {
-  cached = client;
-}

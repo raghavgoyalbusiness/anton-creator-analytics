@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, ApiError } from '../lib/api.js';
-import { Button, Card, Notice, Spinner, inputClass } from '../ui/primitives.jsx';
+import { Badge, Button, Card, Notice, Spinner, Table, Td, Tr, inputClass } from '../ui/primitives.jsx';
 
 interface RosterCreator {
   id: string;
@@ -169,81 +169,85 @@ export function Roster(): ReactNode {
       {!data ? (
         <Spinner label="Loading the roster…" />
       ) : (
-        <div className="overflow-x-auto rounded-[--radius-lg] border border-line">
-          <table className="w-full min-w-[56rem] text-label">
-            <thead>
-              <tr className="border-b border-line text-left text-caption uppercase tracking-wide text-muted">
-                <th className="px-3 py-2">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={(e) =>
-                      setSelected(e.target.checked ? new Set(creators.map((c) => c.id)) : new Set())
-                    }
-                  />
-                </th>
-                <th className="px-3 py-2 font-medium">Creator</th>
-                <th className="px-3 py-2 font-medium">Niche</th>
-                <th className="px-3 py-2 text-right font-medium">Followers</th>
-                <th className="px-3 py-2 text-right font-medium">Median ER</th>
-                <th className="px-3 py-2 text-right font-medium">Posts</th>
-                <th className="px-3 py-2 text-right font-medium">Campaigns</th>
-                <th className="px-3 py-2 font-medium">Consent</th>
-              </tr>
-            </thead>
-            <tbody>
-              {creators.map((c) => (
-                <tr key={c.id} className="border-b border-line/70 last:border-0 hover:bg-sunken">
-                  <td className="px-3 py-2">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(c.id)}
-                      onChange={(e) =>
-                        setSelected((s) => {
-                          const next = new Set(s);
-                          if (e.target.checked) next.add(c.id);
-                          else next.delete(c.id);
-                          return next;
-                        })
-                      }
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="font-medium">{c.displayName}</div>
-                    <div className="text-caption text-muted">
-                      {c.handles.map((h) => `@${h.handle}`).join(', ')}
-                      {c.city ? ` · ${c.city}` : ''}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 text-caption text-muted">{c.nicheTags.join(', ') || '—'}</td>
-                  <td className="px-3 py-2 text-right tnum">
-                    {c.followers?.toLocaleString() ?? '—'}
-                  </td>
-                  <td className="px-3 py-2 text-right tnum">
-                    {c.medianEngagementRate === null ? (
-                      <span className="text-muted" title="No signed-off posts yet — not the same as zero">
-                        not measured
-                      </span>
-                    ) : (
-                      `${(c.medianEngagementRate * 100).toFixed(1)}%`
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right tnum">{c.reportablePosts}</td>
-                  <td className="px-3 py-2 text-right tnum">
-                    {c.campaignsCompleted}/{c.campaignsJoined}
-                  </td>
-                  <td className="px-3 py-2">
-                    {c.hasConsent ? (
-                      <span className="text-caption text-accent">on record</span>
-                    ) : (
-                      <span className="text-caption text-warn">none</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table
+          columns={[
+            {
+              key: 'select',
+              width: '2.5rem',
+              label: (
+                <input
+                  type="checkbox"
+                  aria-label="Select every creator in view"
+                  checked={allSelected}
+                  onChange={(e) =>
+                    setSelected(e.target.checked ? new Set(creators.map((c) => c.id)) : new Set())
+                  }
+                />
+              ),
+            },
+            { key: 'creator', label: 'Creator' },
+            { key: 'niche', label: 'Niche' },
+            { key: 'followers', label: 'Followers', align: 'right' },
+            { key: 'er', label: 'Median ER', align: 'right' },
+            { key: 'posts', label: 'Posts', align: 'right' },
+            { key: 'campaigns', label: 'Campaigns', align: 'right' },
+            { key: 'consent', label: 'Consent' },
+          ]}
+          minWidth="56rem"
+        >
+          {creators.map((c) => (
+            <Tr key={c.id} className="hover:bg-sunken">
+              <Td>
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${c.displayName}`}
+                  checked={selected.has(c.id)}
+                  onChange={(e) =>
+                    setSelected((s) => {
+                      const next = new Set(s);
+                      if (e.target.checked) next.add(c.id);
+                      else next.delete(c.id);
+                      return next;
+                    })
+                  }
+                />
+              </Td>
+              <Td>
+                <div className="font-medium">{c.displayName}</div>
+                <div className="text-caption text-muted">
+                  {c.handles.map((h) => `@${h.handle}`).join(', ')}
+                  {c.city ? ` · ${c.city}` : ''}
+                </div>
+              </Td>
+              <Td className="text-caption text-muted">{c.nicheTags.join(', ') || '—'}</Td>
+              <Td align="right" numeric>
+                {c.followers?.toLocaleString() ?? '—'}
+              </Td>
+              <Td align="right" numeric>
+                {c.medianEngagementRate === null ? (
+                  <span className="text-muted" title="No signed-off posts yet — not the same as zero">
+                    not measured
+                  </span>
+                ) : (
+                  `${(c.medianEngagementRate * 100).toFixed(1)}%`
+                )}
+              </Td>
+              <Td align="right" numeric>
+                {c.reportablePosts}
+              </Td>
+              <Td align="right" numeric>
+                {c.campaignsCompleted}/{c.campaignsJoined}
+              </Td>
+              <Td>
+                {c.hasConsent ? (
+                  <Badge tone="success">on record</Badge>
+                ) : (
+                  <Badge tone="warn">none</Badge>
+                )}
+              </Td>
+            </Tr>
+          ))}
+        </Table>
       )}
 
       <p className="text-caption text-muted">

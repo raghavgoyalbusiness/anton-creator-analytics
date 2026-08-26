@@ -36,10 +36,6 @@ export function getStorage(): StorageAdapter {
   return cached;
 }
 
-/** Test-only. */
-export function resetStorageCache(): void {
-  cached = null;
-}
 
 export { LocalDiskAdapter } from './local.js';
 export { S3Adapter } from './s3.js';

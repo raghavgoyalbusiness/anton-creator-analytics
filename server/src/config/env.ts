@@ -112,7 +112,3 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   return cached;
 }
 
-/** Test-only. */
-export function resetEnvCache(): void {
-  cached = null;
-}

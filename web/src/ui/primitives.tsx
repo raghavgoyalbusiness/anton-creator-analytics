@@ -295,7 +295,7 @@ export function Table({
   children,
   minWidth = '48rem',
 }: {
-  columns: { key: string; label: string; align?: 'left' | 'right' }[];
+  columns: { key: string; label: ReactNode; align?: 'left' | 'right'; width?: string }[];
   children: ReactNode;
   minWidth?: string;
 }): ReactNode {
@@ -308,6 +308,7 @@ export function Table({
               <th
                 key={c.key}
                 scope="col"
+                style={c.width ? { width: c.width } : undefined}
                 className={`px-3 py-2.5 text-caption font-medium uppercase tracking-wide text-muted ${
                   c.align === 'right' ? 'text-right' : 'text-left'
                 }`}

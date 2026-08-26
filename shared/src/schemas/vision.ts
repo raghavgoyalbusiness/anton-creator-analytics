@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { EMPTY_METRICS, METRIC_KEYS, type MetricKey, type PostMetrics } from '../types/metrics.js';
-import type { Platform } from '../types/common.js';
 import { fieldConfidenceSchema, partialMetricsSchema } from './metrics.js';
 
 /**
@@ -211,6 +210,3 @@ export function parseVisionResponse(raw: string): VisionParseResult {
   return { ok: true, envelope, metrics, fieldConfidence, warnings };
 }
 
-export function envelopePlatform(envelope: VisionEnvelope): Platform | null {
-  return envelope.platform === 'unknown' ? null : envelope.platform;
-}

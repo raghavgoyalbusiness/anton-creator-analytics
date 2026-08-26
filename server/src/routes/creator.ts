@@ -34,7 +34,7 @@ import {
 } from '../lib/creator-session.js';
 import { ApiError } from '../lib/errors.js';
 import { asyncRoute, parseBody } from '../lib/validate.js';
-import { hashIp, loadConsentDocument } from '../config/consent.js';
+import { consentIsCurrent, hashIp, loadConsentDocument } from '../config/consent.js';
 import { loadEnv } from '../config/env.js';
 import { AUDIT, recordAudit } from '../lib/audit.js';
 import { DAY_MS, HOUR_MS, enforceRateLimit } from '../lib/rate-limit.js';
@@ -102,7 +102,15 @@ creatorRouter.get(
     const posts = await PostModel.find({ creatorId: creator._id }).sort({ postedAt: -1 }).lean();
 
     const consentIsOnRecord = creator.consent != null && creator.consent.withdrawnAt == null;
-    const consentIsStale = consentIsOnRecord && creator.consent?.documentSha256 !== consentDoc.sha256;
+    // A consent given against an older revision of CONSENT.md is stale: the
+    // creator agreed to different words and must be asked again.
+    const consentIsStale =
+      consentIsOnRecord &&
+      creator.consent != null &&
+      !consentIsCurrent(
+        { scopeVersion: creator.consent.scopeVersion, documentSha256: creator.consent.documentSha256 },
+        consentDoc,
+      );
 
     res.json({
       creator: {

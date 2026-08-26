@@ -119,8 +119,3 @@ export function sumMetric(
   };
 }
 
-export function formatMoney(money: Money): string {
-  const symbols: Record<string, string> = { GBP: '£', USD: '$', EUR: '€', INR: '₹' };
-  const symbol = symbols[money.currency] ?? `${money.currency} `;
-  return `${symbol}${(money.amountMinor / 100).toFixed(2)}`;
-}

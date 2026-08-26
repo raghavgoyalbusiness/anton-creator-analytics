@@ -90,19 +90,6 @@ export async function enforceRateLimit(
   return verdict;
 }
 
-/** Reads without consuming. For dashboards and pre-flight checks. */
-export async function peekRateLimit(rule: RateLimitRule): Promise<RateLimitVerdict> {
-  const now = Date.now();
-  const windowStartMs = Math.floor(now / rule.windowMs) * rule.windowMs;
-  const key = `${rule.bucket}:${rule.subject}:${windowStartMs}`;
-  const doc = await RateCounterModel.findOne({ key }).lean();
-  const count = doc?.count ?? 0;
-  return {
-    allowed: count < rule.limit,
-    remaining: Math.max(0, rule.limit - count),
-    resetAt: new Date(windowStartMs + rule.windowMs),
-  };
-}
 
 export const HOUR_MS = 3_600_000;
 export const DAY_MS = 86_400_000;

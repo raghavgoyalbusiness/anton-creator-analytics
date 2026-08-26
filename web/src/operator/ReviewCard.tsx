@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { METRIC_KEYS, type MetricKey, type PostMetrics } from '@anton/shared';
 import { api } from '../lib/api.js';
-import { Badge, Button, Notice, inputClass } from '../ui/primitives.jsx';
+import { Button, Notice, Table, Td, Tr, inputClass } from '../ui/primitives.jsx';
 import { ConfidenceMeter } from '../ui/charts.jsx';
 import { METRIC_LABELS, type QueueItem } from './types.js';
 
@@ -183,63 +183,61 @@ export function ReviewCard({
           </Notice>
         ) : null}
 
-        <div className="rounded-[--radius-lg] border border-line">
-          <table className="w-full text-label">
-            <thead>
-              <tr className="border-b border-line text-left text-caption font-medium uppercase tracking-wide text-muted">
-                <th className="px-3 py-2 font-medium">Metric</th>
-                <th className="px-3 py-2 font-medium">Value</th>
-                <th className="px-3 py-2 text-right font-medium">Confidence</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orderedKeys.map((key) => {
-                const confidence = extraction?.fieldConfidence[key] ?? null;
-                const low = confidence != null && confidence < MIN_CONFIDENCE;
-                const flagged = flaggedFields.has(key);
-                const edited = draft[key] !== item.metrics[key];
-                return (
-                  <tr key={key} className="border-b border-line/70 last:border-0">
-                    <td className="px-3 py-2">
-                      <span className={flagged ? 'font-medium text-danger' : ''}>
-                        {METRIC_LABELS[key]}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        className={`w-32 rounded-[--radius-md] border px-2 py-1 tnum ${
-                          edited
-                            ? 'border-accent bg-accent-soft'
-                            : flagged
-                              ? 'border-danger/50'
-                              : low
-                                ? 'border-warn/50'
-                                : 'border-line'
-                        } bg-transparent`}
-                        inputMode="numeric"
-                        value={draft[key] === null ? '' : String(draft[key])}
-                        placeholder="not captured"
-                        onChange={(e) => setMetric(key, e.target.value)}
-                        disabled={busy}
-                      />
-                      {edited ? (
-                        <input
-                          className="mt-1 w-full rounded-[--radius-md] border border-line bg-transparent px-2 py-1 text-caption"
-                          placeholder="Why? (optional but kept forever)"
-                          value={reasons[key] ?? ''}
-                          onChange={(e) => setReasons((r) => ({ ...r, [key]: e.target.value }))}
-                        />
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-2">
-                      <ConfidenceMeter value={confidence} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <Table
+          columns={[
+            { key: 'metric', label: 'Metric' },
+            { key: 'value', label: 'Value' },
+            { key: 'confidence', label: 'Confidence', align: 'right', width: '9rem' },
+          ]}
+          minWidth="24rem"
+        >
+          {orderedKeys.map((key) => {
+            const confidence = extraction?.fieldConfidence[key] ?? null;
+            const low = confidence != null && confidence < MIN_CONFIDENCE;
+            const flagged = flaggedFields.has(key);
+            const edited = draft[key] !== item.metrics[key];
+            return (
+              <Tr key={key}>
+                <Td>
+                  <span className={flagged ? 'font-medium text-danger' : ''}>
+                    {METRIC_LABELS[key]}
+                  </span>
+                </Td>
+                <Td>
+                  <input
+                    className={`w-32 rounded-[--radius-sm] border bg-transparent px-2 py-1 tnum ${
+                      edited
+                        ? 'border-accent bg-accent-soft'
+                        : flagged
+                          ? 'border-danger/50'
+                          : low
+                            ? 'border-warn/50'
+                            : 'border-line-strong'
+                    }`}
+                    inputMode="numeric"
+                    aria-label={METRIC_LABELS[key]}
+                    value={draft[key] === null ? '' : String(draft[key])}
+                    placeholder="not captured"
+                    onChange={(e) => setMetric(key, e.target.value)}
+                    disabled={busy}
+                  />
+                  {edited ? (
+                    <input
+                      className="mt-1 w-full rounded-[--radius-sm] border border-line bg-transparent px-2 py-1 text-caption"
+                      placeholder="Why? (optional but kept forever)"
+                      aria-label={`Reason for changing ${METRIC_LABELS[key]}`}
+                      value={reasons[key] ?? ''}
+                      onChange={(e) => setReasons((r) => ({ ...r, [key]: e.target.value }))}
+                    />
+                  ) : null}
+                </Td>
+                <Td align="right">
+                  <ConfidenceMeter value={confidence} />
+                </Td>
+              </Tr>
+            );
+          })}
+        </Table>
 
         {changed.length > 0 ? (
           <Notice tone="info">

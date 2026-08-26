@@ -157,7 +157,7 @@ function BenchmarkEditor({
     setBusy(true);
     setError(null);
     try {
-      await api.post(`/api/operator/campaigns/${campaign.id}/benchmark`, {
+      await api.put(`/api/operator/campaigns/${campaign.id}/benchmark`, {
         label,
         quotedFeeMinor: Math.round(Number(fee) * 100),
         quotedReach: Number(reach),

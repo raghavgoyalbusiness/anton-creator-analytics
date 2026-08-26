@@ -23,21 +23,6 @@ export const CAMPAIGN_CREATOR_STATUSES = [
   'paid',
 ] as const satisfies readonly CampaignCreatorStatus[];
 
-/**
- * Rank used by the nudge list to ask "who is stuck before stage X". `declined`
- * is terminal and deliberately sorts above `paid` so it is never treated as an
- * incomplete state needing a chase.
- */
-export const CAMPAIGN_CREATOR_STAGE_ORDER: Readonly<Record<CampaignCreatorStatus, number>> =
-  Object.freeze({
-    invited: 0,
-    accepted: 1,
-    shipped: 2,
-    posted: 3,
-    reported: 4,
-    paid: 5,
-    declined: 99,
-  });
 
 export interface StatusTransition {
   readonly from: CampaignCreatorStatus | null;
