@@ -20,3 +20,10 @@ export {
   type ShareLinkDoc,
   isMagicLinkUsable,
 } from './Access.js';
+export {
+  TrackingAssetModel,
+  LinkClickModel,
+  assetIsActive,
+  type TrackingAssetDoc,
+  type LinkClickDoc,
+} from './TrackingAsset.js';

@@ -10,6 +10,7 @@ import { operatorQueueRouter } from './routes/operator-queue.js';
 import { operatorRosterRouter } from './routes/operator-roster.js';
 import { shareAdminRouter, shareRouter } from './routes/share.js';
 import { operatorExportRouter } from './routes/operator-export.js';
+import { redirectRouter, trackingRouter } from './routes/tracking.js';
 import { storageRouter } from './routes/storage.js';
 
 export function createApp(): Express {
@@ -65,12 +66,17 @@ export function createApp(): Express {
     res.json({ ok: true, storage: env.STORAGE_DRIVER, env: env.NODE_ENV });
   });
 
+  // Public short-link redirect. Root-mounted: the URL a creator shares must be
+  // short, so it cannot live under /api.
+  app.use(redirectRouter);
+
   app.use('/api/creator', creatorRouter);
   app.use('/api/operator/auth', operatorAuthRouter);
   app.use('/api/operator', operatorQueueRouter);
   app.use('/api/operator', operatorRosterRouter);
   app.use('/api/operator', shareAdminRouter);
   app.use('/api/operator', operatorExportRouter);
+  app.use('/api/operator', trackingRouter);
   // Public, token-gated. Mounted last so it cannot shadow an operator route.
   app.use('/api/report', shareRouter);
 
