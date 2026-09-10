@@ -70,6 +70,15 @@ export interface Creator {
   readonly handles: readonly CreatorHandle[];
   readonly followerSnapshots: readonly FollowerSnapshot[];
   readonly nicheTags: readonly string[];
+  /**
+   * What the audience comes to this creator FOR, distinct from niche.
+   *
+   * Niche says "skincare". A trust domain says whether they are trusted for
+   * ingredient science or for budget picks — different audiences with
+   * different conversion behaviour inside the same niche. Seeded vocabulary
+   * in SEED_TRUST_DOMAINS; custom values allowed.
+   */
+  readonly trustDomains: readonly string[];
   readonly country: IsoCountryCode | null;
   readonly city: string | null;
   readonly languages: readonly LanguageCode[];

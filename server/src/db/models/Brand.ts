@@ -1,5 +1,4 @@
 import { Schema, model, type InferSchemaType, type Model } from 'mongoose';
-import { CURRENCY_CODES } from '@anton/shared';
 
 const brandSchema = new Schema(
   {
@@ -9,7 +8,7 @@ const brandSchema = new Schema(
     primaryColorHex: { type: String, default: null, match: /^#[0-9a-fA-F]{6}$/ },
     contactEmail: { type: String, default: null, lowercase: true, trim: true },
     country: { type: String, default: null, maxlength: 2 },
-    defaultCurrency: { type: String, required: true, enum: CURRENCY_CODES, default: 'GBP' },
+    defaultCurrency: { type: String, required: true, match: /^[A-Z]{3}$/, default: 'GBP' },
   },
   { timestamps: true, collection: 'brands' },
 );

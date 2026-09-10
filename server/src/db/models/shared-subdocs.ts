@@ -1,6 +1,5 @@
 import { Schema, type SchemaDefinition } from 'mongoose';
 import {
-  CURRENCY_CODES,
   METRIC_KEYS,
   PLATFORMS,
   type MetricKey,
@@ -25,7 +24,7 @@ export const moneySchema = new Schema<Money>(
         message: 'money must be whole minor units (pence/cents); {VALUE} is not an integer',
       },
     },
-    currency: { type: String, required: true, enum: CURRENCY_CODES },
+    currency: { type: String, required: true, match: /^[A-Z]{3}$/ },
   },
   { _id: false },
 );

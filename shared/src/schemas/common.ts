@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CURRENCY_CODES, METRIC_SOURCES, PLATFORMS, POST_FORMATS } from '../types/common.js';
+import { METRIC_SOURCES, PLATFORMS, POST_FORMATS } from '../types/common.js';
 
 /** 24-char hex Mongo ObjectId, as a string at the API boundary. */
 export const objectIdSchema = z
@@ -9,7 +9,10 @@ export const objectIdSchema = z
 export const platformSchema = z.enum(PLATFORMS);
 export const postFormatSchema = z.enum(POST_FORMATS);
 export const metricSourceSchema = z.enum(METRIC_SOURCES);
-export const currencyCodeSchema = z.enum(CURRENCY_CODES);
+/** ISO 4217 alphabetic. Shape-checked, not whitelisted — see CurrencyCode. */
+export const currencyCodeSchema = z
+  .string()
+  .regex(/^[A-Z]{3}$/, 'must be a three-letter ISO 4217 code, uppercase');
 
 /** Money is always integer minor units. A float here is a bug, not a rounding. */
 export const moneySchema = z.object({

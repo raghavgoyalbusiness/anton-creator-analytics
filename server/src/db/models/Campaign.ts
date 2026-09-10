@@ -2,7 +2,6 @@ import { Schema, model, type InferSchemaType, type Model } from 'mongoose';
 import {
   CAMPAIGN_STATUSES,
   COMPENSATION_MODELS,
-  CURRENCY_CODES,
   PLATFORMS,
   POST_FORMATS,
 } from '@anton/shared';
@@ -77,7 +76,7 @@ const campaignSchema = new Schema(
     endDate: { type: Date, required: true },
     deliverableSpec: { type: [deliverableSpecItemSchema], default: [] },
     compensationModel: { type: String, required: true, enum: COMPENSATION_MODELS },
-    currency: { type: String, required: true, enum: CURRENCY_CODES },
+    currency: { type: String, required: true, match: /^[A-Z]{3}$/ },
     budgetTotal: { type: moneySchema, required: true },
     defaultPerCreatorRate: { type: moneySchema, required: true },
     trackingLinks: { type: [trackingLinkSchema], default: [] },
