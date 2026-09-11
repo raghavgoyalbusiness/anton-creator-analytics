@@ -17,6 +17,8 @@ import {
   METRIC_KEYS,
   evaluatePlausibility,
   followerCountAsOf,
+  normaliseStub,
+  normaliseTypedCode,
   routeByConfidence,
   type CampaignCreatorStatus,
   type FollowerSnapshot,
@@ -26,6 +28,12 @@ import {
   type PostMetrics,
 } from '@anton/shared';
 import { connectDb, disconnectDb } from '../db/connect.js';
+import { IngestBatchModel, OrderModel } from '../db/models/Order.js';
+import { TrackingAssetModel } from '../db/models/TrackingAsset.js';
+import { CommissionEntryModel, PaymentRecordModel } from '../db/models/Commission.js';
+import { AttributionConflictModel, AttributionModel } from '../db/models/Attribution.js';
+import { runAttribution } from '../attribution/run.js';
+import { postCommission } from '../commission/post.js';
 import {
   BrandModel,
   CampaignCreatorModel,
@@ -348,6 +356,15 @@ async function seed(reset: boolean): Promise<void> {
       PostModel.deleteMany({}),
       MagicLinkModel.deleteMany({}),
       ShareLinkModel.deleteMany({}),
+      TrackingAssetModel.deleteMany({}),
+      OrderModel.deleteMany({}),
+      IngestBatchModel.deleteMany({}),
+      AttributionModel.deleteMany({}),
+      AttributionConflictModel.deleteMany({}),
+      // The ledger model refuses deleteMany by design; a reset goes round it
+      // at the driver rather than weakening the guarantee for everyone else.
+      CommissionEntryModel.collection.deleteMany({}),
+      PaymentRecordModel.deleteMany({}),
     ]);
     console.log('[seed] cleared all collections');
   } else {
@@ -767,6 +784,158 @@ async function seed(reset: boolean): Promise<void> {
     };
   });
   await MagicLinkModel.insertMany(magicLinks.map((m) => m.doc));
+
+
+  /* ------------------------------------------------- orders and commission */
+
+  /**
+   * Commerce data, so the attribution and money surfaces have something real
+   * to render.
+   *
+   * Deliberately imperfect. A seed where every order matches a creator makes
+   * the unattributed view look like dead code and hides the number the brand
+   * will actually ask about first — how much of their revenue the programme
+   * can account for. Roughly a third of these orders match nobody, a few carry
+   * the brand's own sitewide code, and two come back as refunds.
+   */
+  /**
+   * Re-read rather than reusing the array above: insertMany does not write the
+   * generated _id back onto the plain objects it was handed, and every
+   * tracking asset needs the join's id.
+   */
+  const reportedJoins = await CampaignCreatorModel.find({
+    campaignId: campaignA,
+    status: { $in: ['reported', 'paid'] },
+  }).lean();
+
+  const assets: Record<string, unknown>[] = [];
+  const codeByJoin = new Map<string, string>();
+
+  for (const join of reportedJoins.slice(0, 8)) {
+    const creator = creators.find((c) => String(c._id) === String(join.creatorId));
+    const stub = normaliseStub(String(creator?.displayName ?? 'creator').split(' ')[0] ?? 'creator');
+    const code = `${stub.slice(0, 6)}10`;
+    codeByJoin.set(String(join._id), code);
+    assets.push({
+      campaignCreatorId: join._id,
+      campaignId: campaignA,
+      creatorId: join.creatorId,
+      brandId: brandA,
+      type: 'discount_code',
+      value: code,
+      matchKey: normaliseTypedCode(code),
+      issuedAt: daysAgo(50),
+      activeFrom: daysAgo(50),
+      activeUntil: null,
+      status: 'active',
+      // A spread of rates, because a single rate across a roster hides every
+      // rounding question the ledger exists to answer.
+      commissionRateBps: pick([800, 1000, 1250, 1500]),
+      commissionRateBasis: pick(['order_subtotal', 'order_total'] as const),
+      issuedByOperatorId: operatorId,
+    });
+  }
+  await TrackingAssetModel.insertMany(assets);
+  console.log(`[seed] ${assets.length} discount codes`);
+
+  const ingestBatch = await IngestBatchModel.create({
+    brandId: brandA,
+    source: 'manual_csv',
+    status: 'committed',
+    uploadedByOperatorId: operatorId,
+    filename: 'kelp-orders-august.csv',
+    rowsParsed: 0,
+    committedAt: daysAgo(2),
+    currencies: ['GBP'],
+  });
+
+  const issuedCodes = [...codeByJoin.values()];
+  const orders: Record<string, unknown>[] = [];
+
+  for (let i = 0; i < 90; i += 1) {
+    const roll = rng();
+    // A third carry nobody's code; a few carry the brand's own sale code,
+    // which is not one of ours and must read as unattributed with a reason.
+    const code =
+      roll < 0.58 ? pick(issuedCodes) : roll < 0.66 ? 'AUTUMN15' : null;
+
+    const subtotal = int(1_800, 14_500);
+    const shipping = chance(0.6) ? 0 : 399;
+    const refunded = chance(0.06);
+    const partial = refunded && chance(0.4);
+
+    orders.push({
+      brandId: brandA,
+      externalOrderId: `KC-${11_400 + i}`,
+      source: 'manual_csv',
+      orderedAt: daysAgo(int(2, 40)),
+      total: { amountMinor: subtotal + shipping, currency: 'GBP' },
+      subtotal: { amountMinor: subtotal, currency: 'GBP' },
+      currency: 'GBP',
+      discountCodeUsed: code,
+      discountCodeKey: code ? normaliseTypedCode(code) : null,
+      attributionRef: null,
+      customerType: chance(0.62) ? 'new' : 'returning',
+      status: refunded ? (partial ? 'partially_refunded' : 'refunded') : 'confirmed',
+      refundedAmount: refunded
+        ? { amountMinor: partial ? Math.floor(subtotal / 2) : subtotal + shipping, currency: 'GBP' }
+        : null,
+      refundedAt: refunded ? daysAgo(int(1, 3)) : null,
+      ingestBatchId: ingestBatch._id,
+      ingestHistory: [{ batchId: ingestBatch._id, at: daysAgo(2) }],
+      // A realistic export row, customer details included — which is exactly
+      // what must never reach a creator-facing response.
+      rawRow: {
+        'Order name': `KC-${11_400 + i}`,
+        'Customer name': 'Seeded Customer',
+        'Customer email': `customer${i}@example.invalid`,
+        'Discount code': code ?? '',
+      },
+    });
+  }
+  await OrderModel.insertMany(orders);
+  await IngestBatchModel.updateOne(
+    { _id: ingestBatch._id },
+    { $set: { rowsParsed: orders.length, rowsInserted: orders.length } },
+  );
+  console.log(`[seed] ${orders.length} orders`);
+
+  const attribution = await runAttribution({ brandId: brandA });
+  console.log(
+    `[seed] attribution: ${attribution.attributed} attributed, ${attribution.unattributed} not ` +
+      `(${Object.entries(attribution.byReason).map(([k, n]) => `${k} ${n}`).join(', ')})`,
+  );
+
+  const ledger = await postCommission({ brandId: brandA, createdBy: 'seed' });
+  console.log(
+    `[seed] ledger: ${ledger.accrualsCreated} accruals, ${ledger.reversalsCreated} reversals`,
+  );
+
+  /**
+   * A couple of payments the brand says it made. Anton records the claim; it
+   * never moves the money.
+   */
+  const paidJoins = reportedJoins.filter((j) => String(j.status) === 'paid').slice(0, 2);
+  for (const join of paidJoins) {
+    const owed = await CommissionEntryModel.aggregate<{ n: number }>([
+      { $match: { creatorId: join.creatorId, campaignId: campaignA } },
+      { $group: { _id: null, n: { $sum: '$amount.amountMinor' } } },
+    ]);
+    const total = owed[0]?.n ?? 0;
+    if (total <= 0) continue;
+    await PaymentRecordModel.create({
+      creatorId: join.creatorId,
+      campaignId: campaignA,
+      brandId: brandA,
+      // Part-paid on purpose, so "still owed" is a live number on the page.
+      amount: { amountMinor: Math.floor(total * 0.6), currency: 'GBP' },
+      paidAt: daysAgo(3),
+      method: 'bank transfer',
+      reference: 'KC-AUG-01',
+      recordedByOperatorId: operatorId,
+      recordedAt: daysAgo(3),
+    });
+  }
 
   const shareToken = randomBytes(32).toString('base64url');
   await ShareLinkModel.create({

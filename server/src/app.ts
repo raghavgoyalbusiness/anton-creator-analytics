@@ -14,6 +14,7 @@ import { redirectRouter, trackingRouter } from './routes/tracking.js';
 import { ingestRouter } from './routes/ingest.js';
 import { attributionRouter } from './routes/attribution.js';
 import { commissionRouter } from './routes/commission.js';
+import { creatorEarningsRouter } from './routes/creator-earnings.js';
 import { storageRouter } from './routes/storage.js';
 
 export function createApp(): Express {
@@ -74,6 +75,7 @@ export function createApp(): Express {
   app.use(redirectRouter);
 
   app.use('/api/creator', creatorRouter);
+  app.use('/api/creator', creatorEarningsRouter);
   app.use('/api/operator/auth', operatorAuthRouter);
   app.use('/api/operator', operatorQueueRouter);
   app.use('/api/operator', operatorRosterRouter);
