@@ -69,4 +69,8 @@ export const AUDIT = {
   extractionSpendCeiling: 'extraction.spend_ceiling_reached',
   promptInjectionDetected: 'extraction.instruction_text_detected',
   retentionPurge: 'retention.purge',
+  ordersIngested: 'orders.ingested',
+  ordersBatchRolledBack: 'orders.batch_rolled_back',
+  ordersExported: 'orders.exported',
+  columnMappingSaved: 'orders.column_mapping.saved',
 } as const;

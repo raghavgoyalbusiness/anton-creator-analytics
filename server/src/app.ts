@@ -11,6 +11,7 @@ import { operatorRosterRouter } from './routes/operator-roster.js';
 import { shareAdminRouter, shareRouter } from './routes/share.js';
 import { operatorExportRouter } from './routes/operator-export.js';
 import { redirectRouter, trackingRouter } from './routes/tracking.js';
+import { ingestRouter } from './routes/ingest.js';
 import { storageRouter } from './routes/storage.js';
 
 export function createApp(): Express {
@@ -77,6 +78,7 @@ export function createApp(): Express {
   app.use('/api/operator', shareAdminRouter);
   app.use('/api/operator', operatorExportRouter);
   app.use('/api/operator', trackingRouter);
+  app.use('/api/operator', ingestRouter);
   // Public, token-gated. Mounted last so it cannot shadow an operator route.
   app.use('/api/report', shareRouter);
 

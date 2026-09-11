@@ -50,6 +50,9 @@ async function hit(
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers,
+    // Never follow. A redirect is a result to assert, not a step to take —
+    // and the short-link route deliberately points off this host.
+    redirect: 'manual',
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
 
@@ -78,6 +81,60 @@ async function hit(
     ...(ok ? {} : { note: typeof json === 'object' ? JSON.stringify(json).slice(0, 160) : String(json) }),
   });
   return { status: res.status, json };
+}
+
+/** Same as `hit`, but posts a raw CSV body rather than JSON. */
+async function hitCsv(
+  name: string,
+  path: string,
+  expected: number[],
+  body: string,
+): Promise<{ status: number; json: unknown }> {
+  const headers: Record<string, string> = { 'content-type': 'text/csv' };
+  if (cookie) headers.cookie = cookie;
+
+  const res = await fetch(`${BASE}${path}`, { method: 'POST', headers, body });
+  const text = await res.text();
+  let json: unknown = null;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    json = text.slice(0, 120);
+  }
+
+  const ok = expected.includes(res.status);
+  results.push({
+    name,
+    method: 'POST',
+    path,
+    status: res.status,
+    expected,
+    ok,
+    ...(ok ? {} : { note: typeof json === 'object' ? JSON.stringify(json).slice(0, 160) : String(json) }),
+  });
+  return { status: res.status, json };
+}
+
+/**
+ * Records a failure when a value the rest of the script depends on is missing.
+ *
+ * Without this an id that moves in a response body makes every test downstream
+ * of it silently skip, and the run still prints all green — which is the exact
+ * failure this script exists to catch.
+ */
+function need<T>(what: string, value: T | undefined): T | undefined {
+  if (value === undefined || value === null) {
+    results.push({
+      name: `missing ${what}`,
+      method: '-',
+      path: '-',
+      status: 0,
+      expected: [200],
+      ok: false,
+      note: `${what} was not in the response, so everything depending on it was skipped`,
+    });
+  }
+  return value;
 }
 
 function pick<T>(obj: unknown, path: string): T | undefined {
@@ -182,6 +239,131 @@ if (firstCampaignId) {
     quotedReach: 1,
     sourceNote: '',
   });
+}
+
+/* -------------------------------------------------- tracking and ingest */
+
+/**
+ * Steps 2 and 3. The brand id comes off a campaign rather than a brands
+ * endpoint, because every commerce route is scoped by brand in the path and a
+ * wrong id must 404 rather than quietly widen the scope.
+ */
+const firstBrandId = pick<string>(campaigns.json, 'campaigns.0.brandId');
+
+let issuedAssetId: string | undefined;
+let issuedShortCode: string | undefined;
+
+if (firstCreatorId) {
+  // The join row is what a tracking asset hangs off. Creator detail is the
+  // only route that exposes it, so the id comes from there.
+  const detail = await hit('creator detail for join id', 'GET', `/api/operator/creators/${firstCreatorId}`, [200]);
+  const joinId = pick<string>(detail.json, 'participation.0._id');
+
+  if (joinId) {
+    const code = await hit('issue discount code', 'POST', '/api/operator/tracking-assets', [201], {
+      campaignCreatorId: joinId,
+      type: 'discount_code',
+      commissionRateBps: 1000,
+      commissionRateBasis: 'order_subtotal',
+    });
+    issuedAssetId = need('discount code id', pick<string>(code.json, 'id'));
+
+    const link = await hit('issue tracked link', 'POST', '/api/operator/tracking-assets', [201], {
+      campaignCreatorId: joinId,
+      type: 'tracked_link',
+      destinationUrl: 'https://brand.example/collection',
+      commissionRateBps: 500,
+      commissionRateBasis: 'order_subtotal',
+    });
+    issuedShortCode = need('tracked link short code', pick<string>(link.json, 'shortCode'));
+
+    await hit('list assets for join', 'GET', `/api/operator/tracking-assets?campaignCreatorId=${joinId}`, [200]);
+  } else {
+    results.push({
+      name: 'tracking assets',
+      method: '-',
+      path: '-',
+      status: 0,
+      expected: [201],
+      ok: false,
+      note: 'no campaign participation to hang a tracking asset off',
+    });
+  }
+}
+
+await hit('list tracking assets', 'GET', '/api/operator/tracking-assets?status=all', [200]);
+await hit('tracking list rejects bad status', 'GET', '/api/operator/tracking-assets?status=bogus', [400]);
+
+if (issuedShortCode) {
+  // Public, unauthenticated, and must redirect rather than render.
+  await hit('short link redirects', 'GET', `/t/${issuedShortCode}`, [302, 301], undefined, false);
+}
+await hit('unknown short link 404s', 'GET', '/t/ZZZZZZZZ', [404], undefined, false);
+
+if (issuedAssetId) {
+  await hit('revoke tracking asset', 'POST', `/api/operator/tracking-assets/${issuedAssetId}/revoke`, [200], {
+    reason: 'smoke test',
+  });
+  await hit('revoke needs a reason', 'POST', `/api/operator/tracking-assets/${issuedAssetId}/revoke`, [400], {});
+}
+
+if (firstBrandId) {
+  await hit('column mapping empty', 'GET', `/api/operator/brands/${firstBrandId}/column-mapping`, [200]);
+  await hit('column mapping guess', 'POST', `/api/operator/brands/${firstBrandId}/column-mapping/guess`, [200], {
+    headerRow: 'Order ID,Date,Total,Subtotal,Currency,Discount Code,Status',
+  });
+  await hit('save column mapping', 'PUT', `/api/operator/brands/${firstBrandId}/column-mapping`, [200], {
+    externalOrderId: 'Order ID',
+    orderedAt: 'Date',
+    total: 'Total',
+    subtotal: 'Subtotal',
+    currency: 'Currency',
+    discountCode: 'Discount Code',
+    status: 'Status',
+    fallbackCurrency: 'GBP',
+  });
+  await hit('column mapping rejects blank id column', 'PUT', `/api/operator/brands/${firstBrandId}/column-mapping`, [400], {
+    externalOrderId: '',
+    orderedAt: 'Date',
+    total: 'Total',
+    fallbackCurrency: 'GBP',
+  });
+
+  const csvBody = [
+    'Order ID,Date,Total,Subtotal,Currency,Discount Code,Status',
+    'SMOKE-1,2026-08-04,120.00,100.00,GBP,SMOKE10,paid',
+    'SMOKE-2,2026-08-05,60.50,60.50,GBP,,paid',
+  ].join('\n');
+
+  await hitCsv('preview orders', `/api/operator/brands/${firstBrandId}/orders/preview`, [200], csvBody);
+  await hitCsv('preview rejects an xlsx', `/api/operator/brands/${firstBrandId}/orders/preview`, [400], 'PK\u0003\u0004rest');
+  await hitCsv('commit orders', `/api/operator/brands/${firstBrandId}/orders/commit`, [201], csvBody);
+  // Idempotency, live: the same bytes again must insert nothing.
+  const again = await hitCsv('commit is idempotent', `/api/operator/brands/${firstBrandId}/orders/commit`, [201], csvBody);
+  if (pick<number>(again.json, 'rowsInserted') !== 0) {
+    results.push({
+      name: 'commit is idempotent',
+      method: 'POST',
+      path: `/api/operator/brands/${firstBrandId}/orders/commit`,
+      status: 201,
+      expected: [201],
+      ok: false,
+      note: `re-uploading the same file inserted ${pick<number>(again.json, 'rowsInserted')} rows`,
+    });
+  }
+
+  await hit('list orders', 'GET', `/api/operator/brands/${firstBrandId}/orders`, [200]);
+  await hit('list ingest batches', 'GET', `/api/operator/brands/${firstBrandId}/ingest-batches`, [200]);
+  await hit('orders export', 'GET', `/api/operator/brands/${firstBrandId}/orders/export`, [200]);
+  await hit('orders 404 on unknown brand', 'GET', '/api/operator/brands/000000000000000000000000/orders', [404]);
+  await hit('orders 400 on malformed brand', 'GET', '/api/operator/brands/nope/orders', [400]);
+
+  const batches = await hit('batches for rollback', 'GET', `/api/operator/brands/${firstBrandId}/ingest-batches`, [200]);
+  const batchId = pick<string>(batches.json, 'batches.0.id');
+  if (batchId) {
+    await hit('rollback batch', 'POST', `/api/operator/brands/${firstBrandId}/ingest-batches/${batchId}/rollback`, [200], {});
+    await hit('rollback is not repeatable', 'POST', `/api/operator/brands/${firstBrandId}/ingest-batches/${batchId}/rollback`, [409], {});
+  }
 }
 
 /* --------------------------------------------------------------- invites */
