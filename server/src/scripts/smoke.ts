@@ -244,20 +244,38 @@ if (firstCampaignId) {
 /* -------------------------------------------------- tracking and ingest */
 
 /**
- * Steps 2 and 3. The brand id comes off a campaign rather than a brands
- * endpoint, because every commerce route is scoped by brand in the path and a
- * wrong id must 404 rather than quietly widen the scope.
+ * Steps 2 to 5. Every commerce route is scoped by a brand id in the path, so a
+ * wrong one must 404 rather than quietly widen the scope — which also means the
+ * brand, the campaign and the participation used below all have to be the SAME
+ * tenant. Picking them independently is how the first version of this section
+ * spent three requests proving the tenant check works.
  */
-const firstBrandId = pick<string>(campaigns.json, 'campaigns.0.brandId');
+interface SmokeCampaign {
+  id: string;
+  brandId: string;
+}
+const allCampaigns = (pick<SmokeCampaign[]>(campaigns.json, 'campaigns') ?? []).filter(
+  (c): c is SmokeCampaign => typeof c?.id === 'string' && typeof c?.brandId === 'string',
+);
+const brandOfCampaign = new Map(allCampaigns.map((c) => [c.id, c.brandId]));
 
 let issuedAssetId: string | undefined;
 let issuedShortCode: string | undefined;
+let joinIdForMoney: string | undefined;
+let firstBrandId: string | undefined;
 
 if (firstCreatorId) {
   // The join row is what a tracking asset hangs off. Creator detail is the
   // only route that exposes it, so the id comes from there.
   const detail = await hit('creator detail for join id', 'GET', `/api/operator/creators/${firstCreatorId}`, [200]);
-  const joinId = pick<string>(detail.json, 'participation.0._id');
+  const participation = pick<{ _id: string; campaignId: string }[]>(detail.json, 'participation') ?? [];
+  // The brand is taken FROM the join, not chosen separately, so every route
+  // below is exercised against one consistent tenant.
+  const usable = participation.find((p) => brandOfCampaign.has(String(p.campaignId)));
+  const joinId = usable?._id;
+  if (usable) {
+    firstBrandId = brandOfCampaign.get(String(usable.campaignId));
+  }
 
   if (joinId) {
     const code = await hit('issue discount code', 'POST', '/api/operator/tracking-assets', [201], {
@@ -278,6 +296,7 @@ if (firstCreatorId) {
     issuedShortCode = need('tracked link short code', pick<string>(link.json, 'shortCode'));
 
     await hit('list assets for join', 'GET', `/api/operator/tracking-assets?campaignCreatorId=${joinId}`, [200]);
+    joinIdForMoney = joinId;
   } else {
     results.push({
       name: 'tracking assets',
@@ -310,7 +329,7 @@ if (issuedAssetId) {
 if (firstBrandId) {
   await hit('column mapping empty', 'GET', `/api/operator/brands/${firstBrandId}/column-mapping`, [200]);
   await hit('column mapping guess', 'POST', `/api/operator/brands/${firstBrandId}/column-mapping/guess`, [200], {
-    headerRow: 'Order ID,Date,Total,Subtotal,Currency,Discount Code,Status',
+    headerRow: 'Order ID,Date,Total,Subtotal,Currency,Discount Code,Status,Landing Site',
   });
   await hit('save column mapping', 'PUT', `/api/operator/brands/${firstBrandId}/column-mapping`, [200], {
     externalOrderId: 'Order ID',
@@ -320,6 +339,7 @@ if (firstBrandId) {
     currency: 'Currency',
     discountCode: 'Discount Code',
     status: 'Status',
+    attributionRef: 'Landing Site',
     fallbackCurrency: 'GBP',
   });
   await hit('column mapping rejects blank id column', 'PUT', `/api/operator/brands/${firstBrandId}/column-mapping`, [400], {
@@ -330,9 +350,9 @@ if (firstBrandId) {
   });
 
   const csvBody = [
-    'Order ID,Date,Total,Subtotal,Currency,Discount Code,Status',
-    'SMOKE-1,2026-08-04,120.00,100.00,GBP,SMOKE10,paid',
-    'SMOKE-2,2026-08-05,60.50,60.50,GBP,,paid',
+    'Order ID,Date,Total,Subtotal,Currency,Discount Code,Status,Landing Site',
+    'SMOKE-1,2026-08-04,120.00,100.00,GBP,SMOKE10,paid,',
+    'SMOKE-2,2026-08-05,60.50,60.50,GBP,,paid,',
   ].join('\n');
 
   await hitCsv('preview orders', `/api/operator/brands/${firstBrandId}/orders/preview`, [200], csvBody);
@@ -357,6 +377,86 @@ if (firstBrandId) {
   await hit('orders export', 'GET', `/api/operator/brands/${firstBrandId}/orders/export`, [200]);
   await hit('orders 404 on unknown brand', 'GET', '/api/operator/brands/000000000000000000000000/orders', [404]);
   await hit('orders 400 on malformed brand', 'GET', '/api/operator/brands/nope/orders', [400]);
+
+
+  /* ------------------------------------------ attribution and commission */
+
+  await hit('run attribution', 'POST', `/api/operator/brands/${firstBrandId}/attribution/run`, [200], {});
+  // A second run must be a no-op: created 0, and nothing superseded.
+  const rerun = await hit('attribution re-run is idempotent', 'POST', `/api/operator/brands/${firstBrandId}/attribution/run`, [200], {});
+  if (pick<number>(rerun.json, 'created') !== 0 || pick<number>(rerun.json, 'superseded') !== 0) {
+    results.push({
+      name: 'attribution re-run is idempotent',
+      method: 'POST',
+      path: `/api/operator/brands/${firstBrandId}/attribution/run`,
+      status: 200,
+      expected: [200],
+      ok: false,
+      note: `re-running created ${pick<number>(rerun.json, 'created')} and superseded ${pick<number>(rerun.json, 'superseded')}`,
+    });
+  }
+
+  await hit('attribution list', 'GET', `/api/operator/brands/${firstBrandId}/attributions`, [200]);
+  await hit('unattributed list', 'GET', `/api/operator/brands/${firstBrandId}/attribution/unattributed`, [200]);
+  await hit('attribution conflicts', 'GET', `/api/operator/brands/${firstBrandId}/attribution/conflicts`, [200]);
+  await hit('attribution list rejects bad method', 'GET', `/api/operator/brands/${firstBrandId}/attributions?method=bogus`, [400]);
+
+  await hit('post commission', 'POST', `/api/operator/brands/${firstBrandId}/commission/post`, [200], {});
+  const repost = await hit('commission re-post is idempotent', 'POST', `/api/operator/brands/${firstBrandId}/commission/post`, [200], {});
+  if (pick<number>(repost.json, 'accrualsCreated') !== 0) {
+    results.push({
+      name: 'commission re-post is idempotent',
+      method: 'POST',
+      path: `/api/operator/brands/${firstBrandId}/commission/post`,
+      status: 200,
+      expected: [200],
+      ok: false,
+      note: `re-posting accrued ${pick<number>(repost.json, 'accrualsCreated')} more entries`,
+    });
+  }
+
+  const balances = await hit('commission balances', 'GET', `/api/operator/brands/${firstBrandId}/commission/balances`, [200]);
+  await hit('commission reconciliation', 'GET', `/api/operator/brands/${firstBrandId}/commission/reconciliation`, [200]);
+  await hit('commission export', 'GET', `/api/operator/brands/${firstBrandId}/commission/export`, [200]);
+  await hit('payments list', 'GET', `/api/operator/brands/${firstBrandId}/commission/payments`, [200]);
+
+  const balanceCreatorId = pick<string>(balances.json, 'balances.0.creatorId');
+  if (balanceCreatorId) {
+    await hit('creator ledger', 'GET', `/api/operator/brands/${firstBrandId}/creators/${balanceCreatorId}/ledger`, [200]);
+  }
+
+  if (joinIdForMoney) {
+    await hit('adjustment', 'POST', `/api/operator/brands/${firstBrandId}/commission/adjustments`, [201], {
+      campaignCreatorId: joinIdForMoney,
+      amount: { amountMinor: 500, currency: 'GBP' },
+      reason: 'Smoke test adjustment.',
+    });
+    await hit('adjustment needs a reason', 'POST', `/api/operator/brands/${firstBrandId}/commission/adjustments`, [400], {
+      campaignCreatorId: joinIdForMoney,
+      amount: { amountMinor: 500, currency: 'GBP' },
+      reason: '',
+    });
+    const payment = await hit('record payment', 'POST', `/api/operator/brands/${firstBrandId}/commission/payments`, [201], {
+      campaignCreatorId: joinIdForMoney,
+      amount: { amountMinor: 100, currency: 'GBP' },
+      paidAt: '2026-08-20T00:00:00Z',
+      method: 'bank transfer',
+    });
+    await hit('payment cannot be in the future', 'POST', `/api/operator/brands/${firstBrandId}/commission/payments`, [400], {
+      campaignCreatorId: joinIdForMoney,
+      amount: { amountMinor: 100, currency: 'GBP' },
+      paidAt: '2099-01-01T00:00:00Z',
+    });
+    const paymentId = need('payment id', pick<string>(payment.json, 'paymentId'));
+    if (paymentId) {
+      await hit('void payment', 'POST', `/api/operator/brands/${firstBrandId}/commission/payments/${paymentId}/void`, [200], {
+        reason: 'smoke test',
+      });
+      await hit('void is not repeatable', 'POST', `/api/operator/brands/${firstBrandId}/commission/payments/${paymentId}/void`, [404], {
+        reason: 'smoke test',
+      });
+    }
+  }
 
   const batches = await hit('batches for rollback', 'GET', `/api/operator/brands/${firstBrandId}/ingest-batches`, [200]);
   const batchId = pick<string>(batches.json, 'batches.0.id');

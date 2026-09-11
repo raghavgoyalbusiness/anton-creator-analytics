@@ -28,6 +28,16 @@ const orderSchema = new Schema(
     discountCodeUsed: { type: String, default: null, maxlength: 64 },
     discountCodeKey: { type: String, default: null, index: true },
 
+    /**
+     * The tracked-link short code the STORE recorded on the session.
+     *
+     * A CSV has no cookie, so this is the only last-touch signal a manual
+     * upload can carry. Extracted from the landing/referrer column; the URL it
+     * came from is deliberately discarded, because that query string routinely
+     * contains a customer's email address.
+     */
+    attributionRef: { type: String, default: null, maxlength: 16, index: true },
+
     customerType: { type: String, required: true, enum: CUSTOMER_TYPES, default: 'unknown' },
     status: { type: String, required: true, enum: ORDER_STATUSES, default: 'confirmed', index: true },
 
@@ -70,8 +80,9 @@ const orderSchema = new Schema(
  */
 orderSchema.index({ brandId: 1, source: 1, externalOrderId: 1 }, { unique: true });
 
-/** The attribution lookup. */
+/** The attribution lookups. */
 orderSchema.index({ brandId: 1, discountCodeKey: 1, orderedAt: -1 });
+orderSchema.index({ brandId: 1, attributionRef: 1, orderedAt: -1 });
 orderSchema.index({ brandId: 1, orderedAt: -1 });
 
 orderSchema.pre('validate', function checkConsistency(next) {

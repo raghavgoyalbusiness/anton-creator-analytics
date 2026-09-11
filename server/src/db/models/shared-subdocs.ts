@@ -30,6 +30,29 @@ export const moneySchema = new Schema<Money>(
 );
 
 /**
+ * The same, but allowing a negative amount.
+ *
+ * Only the commission ledger uses it. A reversal is a negative entry and the
+ * balance is the sum of the column, so the sign has to survive into storage —
+ * but everywhere else in the product a negative money value is a bug, which is
+ * why this is a separate schema rather than a relaxation of the one above.
+ */
+export const signedMoneySchema = new Schema<Money>(
+  {
+    amountMinor: {
+      type: Number,
+      required: true,
+      validate: {
+        validator: Number.isInteger,
+        message: 'money must be whole minor units (pence/cents); {VALUE} is not an integer',
+      },
+    },
+    currency: { type: String, required: true, match: /^[A-Z]{3}$/ },
+  },
+  { _id: false },
+);
+
+/**
  * The metric block. Every key is explicitly declared and defaults to null, so
  * a missing metric is stored as a null rather than as an absent path. That
  * distinction matters: `{ $exists: false }` and `null` behave differently in

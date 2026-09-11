@@ -12,6 +12,8 @@ import { shareAdminRouter, shareRouter } from './routes/share.js';
 import { operatorExportRouter } from './routes/operator-export.js';
 import { redirectRouter, trackingRouter } from './routes/tracking.js';
 import { ingestRouter } from './routes/ingest.js';
+import { attributionRouter } from './routes/attribution.js';
+import { commissionRouter } from './routes/commission.js';
 import { storageRouter } from './routes/storage.js';
 
 export function createApp(): Express {
@@ -79,6 +81,8 @@ export function createApp(): Express {
   app.use('/api/operator', operatorExportRouter);
   app.use('/api/operator', trackingRouter);
   app.use('/api/operator', ingestRouter);
+  app.use('/api/operator', attributionRouter);
+  app.use('/api/operator', commissionRouter);
   // Public, token-gated. Mounted last so it cannot shadow an operator route.
   app.use('/api/report', shareRouter);
 

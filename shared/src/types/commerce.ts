@@ -107,6 +107,11 @@ export interface Order {
   readonly subtotal: Money;
   readonly currency: CurrencyCode;
   readonly discountCodeUsed: string | null;
+  /**
+   * The tracked-link short code the store recorded on the session, if any.
+   * Extracted from the landing/referrer column; the URL itself is discarded.
+   */
+  readonly attributionRef: string | null;
   readonly customerType: CustomerType;
   readonly status: OrderStatus;
   readonly refundedAmount: Money | null;
@@ -131,6 +136,7 @@ export interface NormalisedOrder {
   readonly total: Money;
   readonly subtotal: Money;
   readonly discountCodeUsed: string | null;
+  readonly attributionRef: string | null;
   readonly customerType: CustomerType;
   readonly status: OrderStatus;
   readonly refundedAmount: Money | null;

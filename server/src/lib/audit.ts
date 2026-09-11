@@ -73,4 +73,12 @@ export const AUDIT = {
   ordersBatchRolledBack: 'orders.batch_rolled_back',
   ordersExported: 'orders.exported',
   columnMappingSaved: 'orders.column_mapping.saved',
+  attributionRun: 'attribution.run',
+  attributionAssigned: 'attribution.assigned_by_hand',
+  attributionWithdrawn: 'attribution.withdrawn',
+  commissionPosted: 'commission.posted',
+  commissionAdjusted: 'commission.adjusted',
+  commissionExported: 'commission.exported',
+  paymentRecorded: 'payment.recorded',
+  paymentVoided: 'payment.voided',
 } as const;

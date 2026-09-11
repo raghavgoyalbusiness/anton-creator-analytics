@@ -127,6 +127,12 @@ export const columnMappingSchema = z.object({
   status: z.string().nullable().default(null),
   refundedAmount: z.string().nullable().default(null),
   refundedAt: z.string().nullable().default(null),
+  /**
+   * The column recording how the session arrived — Shopify's "Landing Site",
+   * a referrer, or a UTM field. Without it, a manual CSV can only ever be
+   * attributed by discount code.
+   */
+  attributionRef: z.string().nullable().default(null),
   /** Used when the file has no currency column. */
   fallbackCurrency: currencyCodeSchema,
 });

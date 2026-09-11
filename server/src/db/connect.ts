@@ -52,10 +52,50 @@ export async function connectDb(): Promise<string> {
   }
 
   await mongoose.connect(uri, {
+    // Indexes are built by ensureIndexes() below, which fails loudly. Mongoose's
+    // own autoIndex reports a failed build on an event nobody is listening to.
     serverSelectionTimeoutMS: 10_000,
-    autoIndex: env.NODE_ENV !== 'production',
+    autoIndex: false,
   });
+
+  if (env.NODE_ENV !== 'production') await ensureIndexes();
+
   return mongoose.connection.host;
+}
+
+/**
+ * Builds every model's indexes, and throws if any of them cannot be built.
+ *
+ * This exists because of a real bug. An index declared inline with
+ * `index: true` and again through `schema.index()` produces two requests with
+ * the same auto-generated name; Mongo rejects the second, and with autoIndex on
+ * that rejection surfaces only as an `index` event on the model. The result was
+ * a UNIQUE constraint — the one stopping an order being credited to two
+ * creators — quietly not existing, while every test that did not specifically
+ * probe the database still passed.
+ *
+ * syncIndexes rather than createIndexes: it also drops an index whose
+ * definition has changed, so a stale one left over from an earlier schema
+ * cannot go on shadowing the current definition. That makes it unsafe against
+ * a production database holding indexes this code does not know about, which is
+ * why production builds them through a deliberate migration instead.
+ */
+export async function ensureIndexes(): Promise<void> {
+  const failures: string[] = [];
+
+  for (const name of mongoose.modelNames()) {
+    try {
+      await mongoose.model(name).syncIndexes();
+    } catch (err: unknown) {
+      failures.push(`${name}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  if (failures.length > 0) {
+    throw new Error(
+      `Index build failed, so a constraint this code relies on is not in force:\n  ${failures.join('\n  ')}`,
+    );
+  }
 }
 
 /**

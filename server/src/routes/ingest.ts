@@ -23,6 +23,8 @@ import { hashIp } from '../config/consent.js';
 import { clientIp } from '../lib/creator-session.js';
 import { DAY_MS, HOUR_MS, enforceRateLimit } from '../lib/rate-limit.js';
 import { commitOrders, hashFile, previewCsv, rollbackBatch } from '../ingest/commit.js';
+import { runAttribution } from '../attribution/run.js';
+import { postCommission } from '../commission/post.js';
 
 export const ingestRouter: Router = Router();
 ingestRouter.use(requireOperator);
@@ -295,7 +297,28 @@ ingestRouter.post(
       ipHash: hashIp(clientIp(req)),
     });
 
-    res.status(201).json(result);
+    /**
+     * Attribution runs over the orders this batch touched, not over everything.
+     *
+     * Scoped to the changed rows because that is the set whose answer can have
+     * moved — and because an operator uploading a small correction should not
+     * pay the cost of re-deciding a year of orders. The full re-run is a
+     * separate, deliberate action.
+     */
+    const attribution = await runAttribution({
+      brandId,
+      externalOrderIds: result.changedOrderIds,
+    });
+
+    /**
+     * The ledger is posted in the same request as the attribution that feeds
+     * it. Leaving a gap between them means a window where the brand can see an
+     * attributed order that owes nobody anything, which reads as a bug to
+     * everyone who sees it.
+     */
+    const commission = await postCommission({ brandId, createdBy: operator.email });
+
+    res.status(201).json({ ...result, attribution, commission });
   }),
 );
 

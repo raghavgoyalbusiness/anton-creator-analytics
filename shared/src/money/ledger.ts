@@ -19,6 +19,12 @@ export const COMMISSION_ENTRY_TYPES = [
 
 /** The shape the balance functions need. The stored document carries more. */
 export interface LedgerEntry {
+  /**
+   * Optional, and only so a caller can correlate a running balance back to the
+   * row it belongs to. These functions re-sort, so matching by position is a
+   * bug waiting for the first two entries written in the same millisecond.
+   */
+  readonly id?: string;
   readonly type: CommissionEntryType;
   readonly amount: Money;
   readonly createdAt: Date;

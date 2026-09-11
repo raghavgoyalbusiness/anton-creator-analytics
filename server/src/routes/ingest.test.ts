@@ -40,6 +40,9 @@ async function signedIn(): Promise<TestAgent> {
   const res = await agent
     .post('/api/operator/auth/login')
     .send({ email: 'ingest@anton.example', password: PASSWORD, totpCode: code() });
+  if (res.status !== 200) {
+    console.error('[login failed]', res.status, JSON.stringify(res.headers), res.text?.slice(0, 400));
+  }
   expect(res.status).toBe(200);
   return agent;
 }
@@ -74,6 +77,7 @@ const MAPPING = {
   status: 'Status',
   refundedAmount: 'Refunded',
   refundedAt: 'Refunded At',
+  attributionRef: 'Landing Site',
   fallbackCurrency: 'GBP',
 };
 
@@ -87,7 +91,7 @@ async function saveMapping(agent: TestAgent, brandId: Types.ObjectId): Promise<v
 }
 
 const HEADER =
-  'Order ID,Date,Total,Subtotal,Currency,Discount Code,Customer Type,Status,Refunded,Refunded At';
+  'Order ID,Date,Total,Subtotal,Currency,Discount Code,Customer Type,Status,Refunded,Refunded At,Landing Site';
 
 function csv(...rows: string[]): string {
   return `${HEADER}\n${rows.join('\n')}\n`;
@@ -95,9 +99,9 @@ function csv(...rows: string[]): string {
 
 /** Three clean orders, one of them on a creator's code. */
 const BASE_CSV = csv(
-  '1001,2026-08-04,120.00,100.00,GBP,AMARA10,new,paid,,',
-  '1002,2026-08-05,60.50,60.50,GBP,AMARA10,returning,paid,,',
-  '1003,2026-08-06,45.00,45.00,GBP,,new,paid,,',
+  '1001,2026-08-04,120.00,100.00,GBP,AMARA10,new,paid,,,',
+  '1002,2026-08-05,60.50,60.50,GBP,AMARA10,returning,paid,,,',
+  '1003,2026-08-06,45.00,45.00,GBP,,new,paid,,,',
 );
 
 function post(agent: TestAgent, path: string, body: string | Buffer) {
@@ -252,9 +256,9 @@ describe('preview', () => {
     const agent = await signedIn();
     await saveMapping(agent, brandA);
     const bad = csv(
-      '1001,2026-08-04,120.00,100.00,GBP,,new,paid,,',
-      ',2026-08-05,60.00,60.00,GBP,,new,paid,,',
-      '1003,not-a-date,45.00,45.00,GBP,,new,paid,,',
+      '1001,2026-08-04,120.00,100.00,GBP,,new,paid,,,',
+      ',2026-08-05,60.00,60.00,GBP,,new,paid,,,',
+      '1003,not-a-date,45.00,45.00,GBP,,new,paid,,,',
     );
     const res = await post(agent, `/api/operator/brands/${brandA.toString()}/orders/preview`, bad);
     expect(res.body.validation.rowsParsed).toBe(1);
@@ -433,8 +437,8 @@ describe('commit', () => {
     const agent = await signedIn();
     await saveMapping(agent, brandA);
     const dupes = csv(
-      '1001,2026-08-04,120.00,100.00,GBP,,new,paid,,',
-      '1001,2026-08-04,150.00,150.00,GBP,,new,paid,,',
+      '1001,2026-08-04,120.00,100.00,GBP,,new,paid,,,',
+      '1001,2026-08-04,150.00,150.00,GBP,,new,paid,,,',
     );
     const res = await post(agent, `/api/operator/brands/${brandA.toString()}/orders/commit`, dupes);
     expect(res.body.rowsInserted).toBe(1);
@@ -453,9 +457,9 @@ describe('commit', () => {
     await post(agent, `/api/operator/brands/${brandA.toString()}/orders/commit`, BASE_CSV);
 
     const later = csv(
-      '1001,2026-08-04,120.00,100.00,GBP,AMARA10,new,refunded,120.00,2026-08-20',
-      '1002,2026-08-05,60.50,60.50,GBP,AMARA10,returning,paid,,',
-      '1003,2026-08-06,45.00,45.00,GBP,,new,paid,,',
+      '1001,2026-08-04,120.00,100.00,GBP,AMARA10,new,refunded,120.00,2026-08-20,',
+      '1002,2026-08-05,60.50,60.50,GBP,AMARA10,returning,paid,,,',
+      '1003,2026-08-06,45.00,45.00,GBP,,new,paid,,,',
     );
     const res = await post(agent, `/api/operator/brands/${brandA.toString()}/orders/commit`, later);
 
@@ -475,7 +479,7 @@ describe('commit', () => {
     await saveMapping(agent, brandA);
     await post(agent, `/api/operator/brands/${brandA.toString()}/orders/commit`, BASE_CSV);
 
-    const partial = csv('1002,2026-08-05,60.50,60.50,GBP,AMARA10,returning,paid,20.00,2026-08-21');
+    const partial = csv('1002,2026-08-05,60.50,60.50,GBP,AMARA10,returning,paid,20.00,2026-08-21,');
     const res = await post(
       agent,
       `/api/operator/brands/${brandA.toString()}/orders/commit`,
@@ -491,7 +495,7 @@ describe('commit', () => {
   it('stores the folded discount code alongside the verbatim one', async () => {
     const agent = await signedIn();
     await saveMapping(agent, brandA);
-    const mixed = csv('1001,2026-08-04,120.00,100.00,GBP,amara1o,new,paid,,');
+    const mixed = csv('1001,2026-08-04,120.00,100.00,GBP,amara1o,new,paid,,,');
     await post(agent, `/api/operator/brands/${brandA.toString()}/orders/commit`, mixed);
     const order = await OrderModel.findOne({ brandId: brandA }).lean();
     expect(order?.discountCodeUsed).toBe('amara1o');
@@ -504,7 +508,7 @@ describe('commit', () => {
   it('refuses a file where nothing parsed', async () => {
     const agent = await signedIn();
     await saveMapping(agent, brandA);
-    const junk = csv(',,,,,,,,,', ',,,,,,,,,');
+    const junk = csv(',,,,,,,,,,', ',,,,,,,,,,');
     const res = await post(agent, `/api/operator/brands/${brandA.toString()}/orders/commit`, junk);
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('nothing_to_commit');
@@ -567,8 +571,8 @@ describe('batches and rollback', () => {
       agent,
       `/api/operator/brands/${brandA.toString()}/orders/commit`,
       csv(
-        '1001,2026-08-04,120.00,100.00,GBP,AMARA10,new,refunded,120.00,2026-08-20',
-        '1004,2026-08-09,15.00,15.00,GBP,,new,paid,,',
+        '1001,2026-08-04,120.00,100.00,GBP,AMARA10,new,refunded,120.00,2026-08-20,',
+        '1004,2026-08-09,15.00,15.00,GBP,,new,paid,,,',
       ),
     );
 
@@ -631,7 +635,7 @@ describe('cross-brand isolation', () => {
     await post(
       agent,
       `/api/operator/brands/${brandB.toString()}/orders/commit`,
-      csv('9001,2026-08-04,999.00,999.00,GBP,BRANDB,new,paid,,'),
+      csv('9001,2026-08-04,999.00,999.00,GBP,BRANDB,new,paid,,,'),
     );
     await clearRateLimits();
   });
@@ -726,10 +730,10 @@ describe('export', () => {
     const agent = await signedIn();
     await saveMapping(agent, brandA);
     const evil = csv(
-      '2001,2026-08-04,10.00,10.00,GBP,"=HYPERLINK(""http://evil.test"",""claim"")",new,paid,,',
-      '2002,2026-08-05,10.00,10.00,GBP,+1234,new,paid,,',
-      '2003,2026-08-06,10.00,10.00,GBP,@SUM(A1),new,paid,,',
-      '2004,2026-08-07,10.00,10.00,GBP,-99,new,paid,,',
+      '2001,2026-08-04,10.00,10.00,GBP,"=HYPERLINK(""http://evil.test"",""claim"")",new,paid,,,',
+      '2002,2026-08-05,10.00,10.00,GBP,+1234,new,paid,,,',
+      '2003,2026-08-06,10.00,10.00,GBP,@SUM(A1),new,paid,,,',
+      '2004,2026-08-07,10.00,10.00,GBP,-99,new,paid,,,',
     );
     await post(agent, `/api/operator/brands/${brandA.toString()}/orders/commit`, evil);
 

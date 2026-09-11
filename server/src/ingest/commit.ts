@@ -154,6 +154,7 @@ export async function commitOrders(params: {
       currency: order.total.currency,
       discountCodeUsed: order.discountCodeUsed,
       discountCodeKey: order.discountCodeUsed ? normaliseTypedCode(order.discountCodeUsed) : null,
+      attributionRef: order.attributionRef,
       customerType: order.customerType,
       status: order.status,
       refundedAmount: order.refundedAmount,

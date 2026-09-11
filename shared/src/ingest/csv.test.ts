@@ -7,6 +7,7 @@ import {
   parseDateString,
   parseMoneyString,
   parseOrderStatus,
+  extractAttributionRef,
 } from './csv.js';
 import { mapRow, mapRows } from './map.js';
 import type { ColumnMapping } from '../schemas/commerce.js';
@@ -367,5 +368,70 @@ describe('mapRows', () => {
     const report = mapRows([], mapping);
     expect(report.rowsParsed).toBe(0);
     expect(report.dateRangeFrom).toBeNull();
+  });
+});
+
+/* ---------------------------------------------------- attribution ref */
+
+describe('extractAttributionRef', () => {
+  it('pulls the code out of a full landing URL', () => {
+    expect(
+      extractAttributionRef(
+        'https://brand.example/collections/new?utm_source=anton&utm_medium=creator&anton_ref=NZJ6G6G',
+      ),
+    ).toBe('NZJ6G6G');
+  });
+
+  it('handles a bare query string, which is what some exports hold', () => {
+    expect(extractAttributionRef('?anton_ref=NZJ6G6G&utm_source=anton')).toBe('NZJ6G6G');
+  });
+
+  it('handles the code on its own', () => {
+    expect(extractAttributionRef('NZJ6G6G')).toBe('NZJ6G6G');
+    expect(extractAttributionRef('  nzj6g6g  ')).toBe('NZJ6G6G');
+  });
+
+  it('finds the parameter after a fragment', () => {
+    expect(extractAttributionRef('https://b.example/p#anton_ref=NZJ6G6G')).toBe('NZJ6G6G');
+  });
+
+  it('is case-insensitive about the parameter name', () => {
+    expect(extractAttributionRef('https://b.example/?ANTON_REF=NZJ6G6G')).toBe('NZJ6G6G');
+  });
+
+  it('returns null for a landing page with no ref', () => {
+    expect(extractAttributionRef('https://brand.example/collections/new')).toBeNull();
+    expect(extractAttributionRef('')).toBeNull();
+    expect(extractAttributionRef('   ')).toBeNull();
+  });
+
+  /**
+   * The load-bearing rejection. The alphabet excludes vowels and confusables,
+   * so anything outside it was never one of our short codes — and accepting it
+   * would mean attributing an order on a string a customer could type.
+   */
+  it('rejects anything outside the short-code alphabet', () => {
+    expect(extractAttributionRef('https://b.example/?anton_ref=hello')).toBeNull();
+    expect(extractAttributionRef('https://b.example/?anton_ref=A1')).toBeNull();
+    expect(extractAttributionRef("https://b.example/?anton_ref=' OR 1=1--")).toBeNull();
+    expect(extractAttributionRef('https://b.example/?anton_ref=NZJ6G6G0')).toBeNull();
+  });
+
+  it('rejects a code that is too long to be one of ours', () => {
+    expect(extractAttributionRef('BCDFGHJKMNPQRTVWXYZ2')).toBeNull();
+  });
+
+  it('never returns the surrounding URL, only the code', () => {
+    const url = 'https://brand.example/p?email=someone%40example.com&anton_ref=NZJ6G6G';
+    const got = extractAttributionRef(url);
+    expect(got).toBe('NZJ6G6G');
+    // The customer email in that query string must not survive extraction.
+    expect(got).not.toContain('@');
+    expect(got).not.toContain('example');
+  });
+
+  it('decodes a percent-encoded value and survives a malformed one', () => {
+    expect(extractAttributionRef('https://b.example/?anton_ref=%4E%5A%4A%36%47%36%47')).toBe('NZJ6G6G');
+    expect(extractAttributionRef('https://b.example/?anton_ref=%ZZ')).toBeNull();
   });
 });

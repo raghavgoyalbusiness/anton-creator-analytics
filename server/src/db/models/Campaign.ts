@@ -2,6 +2,7 @@ import { Schema, model, type InferSchemaType, type Model } from 'mongoose';
 import {
   CAMPAIGN_STATUSES,
   COMPENSATION_MODELS,
+  MAX_ATTRIBUTION_WINDOW_HOURS,
   PLATFORMS,
   POST_FORMATS,
 } from '@anton/shared';
@@ -82,6 +83,26 @@ const campaignSchema = new Schema(
     trackingLinks: { type: [trackingLinkSchema], default: [] },
     discountCodes: { type: [discountCodeSchema], default: [] },
     megaBenchmark: { type: megaBenchmarkSchema, default: null },
+
+    /**
+     * How long after a creator's link or code stops being live an order can
+     * still be credited to it.
+     *
+     * Per campaign, because a launch week and an always-on affiliate programme
+     * run to different rhythms and should not be forced to share a number.
+     * Null means the product default; the value actually used is copied onto
+     * every attribution row, so changing this never rewrites a past report.
+     */
+    attributionWindowHours: {
+      type: Number,
+      default: null,
+      min: 1,
+      max: MAX_ATTRIBUTION_WINDOW_HOURS,
+      validate: {
+        validator: (v: number | null) => v === null || Number.isInteger(v),
+        message: 'the attribution window is a whole number of hours',
+      },
+    },
   },
   { timestamps: true, collection: 'campaigns' },
 );

@@ -320,5 +320,52 @@ export function guessMapping(headers: readonly string[]): Record<string, string 
     status: find(/financial.?status/, /^status$/, /payment.?status/, /order.?status/),
     refundedAmount: find(/refund(ed)?.?amount/, /^refunded$/, /total.?refund/),
     refundedAt: find(/refund(ed)?.?(at|date)/),
+    attributionRef: find(
+      /landing.?(site|page|url)/,
+      /referr?ing.?(site|url)/,
+      /utm.?content/,
+      /anton.?ref/,
+      /^referrer$/,
+    ),
   };
+}
+
+/* ------------------------------------------------------ link attribution */
+
+/**
+ * The query parameter a tracked link carries.
+ *
+ * A brand's CSV export has no visitor identifier — there is no cookie in a
+ * spreadsheet — so last-touch attribution from a manual upload can only work
+ * through what the STORE recorded about how the session arrived. Shopify calls
+ * that column "Landing Site"; WooCommerce and most others export a referrer or
+ * a UTM field. All of them preserve the query string, and `anton_ref` is what
+ * buildTrackedUrl puts there.
+ */
+export const ATTRIBUTION_REF_PARAM = 'anton_ref';
+
+/**
+ * Pulls the short code out of whatever the store recorded.
+ *
+ * Deliberately tolerant about the shape of the surrounding text: the column
+ * might be a full URL, a bare query string, or just the code. It is NOT
+ * tolerant about the code itself — a short code is drawn from a fixed
+ * alphabet, and anything else is not one of ours.
+ */
+export function extractAttributionRef(raw: string): string | null {
+  const text = raw.trim();
+  if (text.length === 0) return null;
+
+  const fromQuery = new RegExp(`[?&#]${ATTRIBUTION_REF_PARAM}=([^&#\\s]+)`, 'i').exec(text);
+  const candidate = fromQuery?.[1] ?? text;
+
+  let decoded = candidate;
+  try {
+    decoded = decodeURIComponent(candidate);
+  } catch {
+    // A stray percent sign in the export is not a reason to lose the code.
+  }
+
+  const code = decoded.trim().toUpperCase();
+  return /^[23456789BCDFGHJKMNPQRTVWXYZ]{4,16}$/.test(code) ? code : null;
 }

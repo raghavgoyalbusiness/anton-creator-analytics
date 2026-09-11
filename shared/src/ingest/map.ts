@@ -2,6 +2,7 @@ import { minorUnitExponent } from '../types/common.js';
 import type { NormalisedOrder } from '../types/commerce.js';
 import type { ColumnMapping } from '../schemas/commerce.js';
 import {
+  extractAttributionRef,
   parseCustomerType,
   parseDateString,
   parseMoneyString,
@@ -35,8 +36,18 @@ export interface MappingReport {
   readonly currencies: readonly string[];
 }
 
-function cell(row: Readonly<Record<string, string>>, column: string | null): string {
-  return column === null ? '' : (row[column] ?? '');
+/**
+ * Reads a mapped column.
+ *
+ * Takes undefined as well as null: a mapping saved before a column existed has
+ * no key for it at all, and a brand should not have to re-map because we added
+ * a field.
+ */
+function cell(
+  row: Readonly<Record<string, string>>,
+  column: string | null | undefined,
+): string {
+  return column === null || column === undefined ? '' : (row[column] ?? '');
 }
 
 export function mapRow(
@@ -131,6 +142,16 @@ export function mapRow(
 
   const discountCodeUsed = cell(row, mapping.discountCode).trim() || null;
 
+  /**
+   * Only the code is kept, never the landing URL it came from.
+   *
+   * That column holds a full URL with whatever query string the customer
+   * arrived with, which routinely carries an email address or a session id.
+   * Extracting the eight characters we need and discarding the rest is the
+   * difference between storing a reference and storing a tracking record.
+   */
+  const attributionRef = extractAttributionRef(cell(row, mapping.attributionRef));
+
   return {
     line,
     ok: true,
@@ -141,6 +162,7 @@ export function mapRow(
       total: { amountMinor: total.amountMinor, currency },
       subtotal: { amountMinor: subtotalMinor, currency },
       discountCodeUsed,
+      attributionRef,
       customerType: parseCustomerType(cell(row, mapping.customerType)),
       status,
       refundedAmount,
