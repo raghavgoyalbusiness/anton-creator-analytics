@@ -13,6 +13,7 @@ import {
   inputClass,
 } from '../ui/primitives.jsx';
 import { BarSeries, ComparisonBars, CoverageBar, InlineBar } from '../ui/charts.jsx';
+import { RevenueSection, type RevenueData } from './RevenueSection.jsx';
 
 /* Types mirror the /api/report payload rather than the database. */
 
@@ -91,7 +92,15 @@ interface ReportPayload {
     codesWithData: number;
     statement: string;
   };
-  methodology: { provenance: string; verificationLimit: string; exclusions: string; spend: string };
+  revenue: RevenueData;
+  methodology: {
+    provenance: string;
+    verificationLimit: string;
+    exclusions: string;
+    spend: string;
+    attribution: string;
+    attributionCoverage: string;
+  };
   link: { expiresAt: string; showsCompensation: boolean };
 }
 
@@ -242,6 +251,9 @@ export function ReportApp(): ReactNode {
           </Card>
         </section>
       ) : null}
+
+      {/* --------------------------------------------------------- revenue */}
+      <RevenueSection data={data.revenue} showCreators={data.link.showsCompensation} />
 
       {/* --------------------------------------------------------- summary */}
       <section className="mb-12">
@@ -484,7 +496,10 @@ export function ReportApp(): ReactNode {
 
       {/* ------------------------------------------------------ conversion */}
       <section className="mb-12">
-        <SectionHeading title="Sales" />
+        <SectionHeading
+          title="Sales figures you reported"
+          hint="Supplied by you from your own platform, separate from what Anton matched above."
+        />
         {data.conversions.reportedRedemptions === null ? (
           <Notice tone="info" title="No conversion data">
             {data.conversions.statement}
@@ -518,6 +533,7 @@ export function ReportApp(): ReactNode {
               ['What they are not', data.methodology.verificationLimit],
               ['What is counted', data.methodology.exclusions],
               ['What spend means', data.methodology.spend],
+              ['What attribution says', data.methodology.attribution],
             ] as [string, string][]
           ).map(([title, body]) => (
             <div key={title}>

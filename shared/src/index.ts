@@ -15,6 +15,7 @@ export * from './schemas/metrics.js';
 export * from './schemas/vision.js';
 export * from './schemas/entities.js';
 export * from './metrics/report.js';
+export * from './metrics/revenue.js';
 
 export * from './types/commerce.js';
 export * from './money/currency.js';

@@ -27,6 +27,7 @@ import {
   PostModel,
   ShareLinkModel,
 } from '../db/models/index.js';
+import { buildRevenueSection } from '../reporting/revenue.js';
 import { ApiError } from '../lib/errors.js';
 import { asyncRoute, parseBody } from '../lib/validate.js';
 import { hashToken, looksLikeToken, mintToken } from '../lib/tokens.js';
@@ -303,6 +304,20 @@ shareRouter.get(
       campaign.currency,
     );
 
+    /**
+     * The revenue section.
+     *
+     * Computed for the campaign's brand over the campaign's own dates, so a
+     * brand reading one campaign's report is not shown orders from another.
+     */
+    const revenue = await buildRevenueSection({
+      brandId: campaign.brandId,
+      campaignId: campaign._id,
+      from: campaign.startDate,
+      to: campaign.endDate,
+      currency: campaign.currency,
+    });
+
     // Log the view. Capped so a link that gets shared widely does not grow the
     // document without bound.
     const now = new Date();
@@ -368,6 +383,12 @@ shareRouter.get(
       topHooks: topHooks(reportPosts),
       conversions,
       /**
+       * Always present, even when nothing was attributed. A revenue section
+       * that appears only when the numbers are good teaches a brand to read
+       * its absence as bad news, which is worse than an honest zero.
+       */
+      revenue,
+      /**
        * The methodology note. Kept server-side so the report cannot be rendered
        * without it, and phrased to say exactly what these numbers are.
        */
@@ -379,6 +400,8 @@ shareRouter.get(
         exclusions: `${summary.coverage.included} posts are included. ${summary.coverage.excludedNotVerified} are still being checked and ${summary.coverage.excludedRejected} were rejected; neither is counted as zero.`,
         spend:
           'Spend is the total agreed with the creators who took part, not the campaign budget.',
+        attribution: revenue.statements.causation,
+        attributionCoverage: revenue.statements.coverage,
       },
       link: { expiresAt: link.expiresAt, showsCompensation: link.showCompensation },
     });
