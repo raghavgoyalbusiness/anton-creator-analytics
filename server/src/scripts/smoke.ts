@@ -278,9 +278,29 @@ if (firstCreatorId) {
   }
 
   if (joinId) {
+    /**
+     * One active code per creator per campaign is enforced, and the seed issues
+     * codes of its own — so this join may already hold one. It is revoked
+     * first rather than tolerated, which keeps the run deterministic on a fresh
+     * reset instead of passing only when a previous run happened to clear it.
+     */
+    const existing = await hit('existing assets for join', 'GET', `/api/operator/tracking-assets?campaignCreatorId=${joinId}&status=active`, [200]);
+    for (const asset of pick<{ id: string; type: string }[]>(existing.json, 'assets') ?? []) {
+      if (asset.type === 'discount_code') {
+        await hit('clear seeded code', 'POST', `/api/operator/tracking-assets/${asset.id}/revoke`, [200], {
+          reason: 'smoke test: making room for a fresh code',
+        });
+      }
+    }
+
+    // An explicit stub, because the seed now issues codes of its own and a
+    // generated one could collide with a creator's existing code.
     const code = await hit('issue discount code', 'POST', '/api/operator/tracking-assets', [201], {
       campaignCreatorId: joinId,
       type: 'discount_code',
+      // Letters only — the stub has to survive being read aloud — and random,
+      // so running smoke twice does not collide on the brand's unique index.
+      codeStub: `SMK${Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)]).join('')}`,
       commissionRateBps: 1000,
       commissionRateBasis: 'order_subtotal',
     });
@@ -465,6 +485,121 @@ if (firstBrandId) {
     await hit('rollback is not repeatable', 'POST', `/api/operator/brands/${firstBrandId}/ingest-batches/${batchId}/rollback`, [409], {});
   }
 }
+
+
+  /* -------------------------------------------------- licensing and ads */
+
+  /**
+   * The post has to be one THIS creator made on THIS campaign — the route
+   * rejects anything else, and picking whatever was first in the review queue
+   * is how the first version of this section tested the guard instead of the
+   * feature.
+   */
+  const licensablePostId =
+    firstCreatorId && firstCampaignId
+      ? pick<{ id: string; campaignId: string }[]>(
+          (await hit('creator detail for a licensable post', 'GET', `/api/operator/creators/${firstCreatorId}`, [200]))
+            .json,
+          'posts',
+        )?.find((p) => String(p.campaignId) === String(firstCampaignId))?.id
+      : undefined;
+
+  if (firstCampaignId && joinIdForMoney && licensablePostId) {
+    const licence = await hit('request a licence', 'POST', '/api/operator/licences/request', [201], {
+      campaignCreatorId: joinIdForMoney,
+      scope: 'named_posts',
+      postIds: [licensablePostId],
+      permittedUses: ['organic_reshare', 'paid_amplification'],
+      territory: ['GB'],
+      startsAt: '2026-08-01T00:00:00Z',
+      endsAt: null,
+      modificationPermitted: true,
+    });
+    // An operator request must leave the licence permitting nothing.
+    const state = pick<string>(licence.json, 'state');
+    if (state !== 'awaiting_creator') {
+      results.push({
+        name: 'a requested licence permits nothing',
+        method: 'POST',
+        path: '/api/operator/licences/request',
+        status: 201,
+        expected: [201],
+        ok: false,
+        note: `a fresh request came back as "${state}", not "awaiting_creator"`,
+      });
+    }
+
+    await hit('licence request rejects no uses', 'POST', '/api/operator/licences/request', [400], {
+      campaignCreatorId: joinIdForMoney,
+      scope: 'named_posts',
+      postIds: [licensablePostId],
+      permittedUses: [],
+      territory: ['GB'],
+      startsAt: '2026-08-01T00:00:00Z',
+    });
+
+    await hit('licence list', 'GET', `/api/operator/campaigns/${firstCampaignId}/licences`, [200]);
+    const readiness = await hit('ad readiness', 'GET', `/api/operator/campaigns/${firstCampaignId}/ad-readiness`, [200]);
+
+    // Nothing is grantable by an operator, so nothing can be ad-ready yet.
+    if ((pick<number>(readiness.json, 'counts.ready') ?? 0) > 0) {
+      results.push({
+        name: 'nothing is ad-ready without a creator grant',
+        method: 'GET',
+        path: `/api/operator/campaigns/${firstCampaignId}/ad-readiness`,
+        status: 200,
+        expected: [200],
+        ok: false,
+        note: 'a post was reported ad-ready although no creator has granted a licence',
+      });
+    }
+
+    const licenceId = need('licence id', pick<string>(licence.json, 'id'));
+    if (licenceId) {
+      await hit('operator cannot grant', 'POST', `/api/operator/licences/${licenceId}/grant`, [404], {
+        agree: true,
+      });
+      await hit('revoke needs a reason', 'POST', `/api/operator/licences/${licenceId}/revoke`, [400], {
+        reason: '',
+      });
+      await hit('revoke licence', 'POST', `/api/operator/licences/${licenceId}/revoke`, [200], {
+        reason: 'smoke test',
+      });
+      await hit('revoke is not repeatable', 'POST', `/api/operator/licences/${licenceId}/revoke`, [404], {
+        reason: 'smoke test',
+      });
+    }
+  }
+
+
+  /* ------------------------------------------------------ trust domains */
+
+  await hit('trust domain vocabulary', 'GET', '/api/operator/trust-domains', [200]);
+  if (firstCreatorId) {
+    await hit('tag trust domains', 'PUT', `/api/operator/creators/${firstCreatorId}/trust-domains`, [200], {
+      domains: ['Budget Picks', 'ingredient-science'],
+    });
+    await hit('trust domains capped at three', 'PUT', `/api/operator/creators/${firstCreatorId}/trust-domains`, [400], {
+      domains: ['budget_picks', 'ingredient_science', 'sensitive_skin', 'transformation'],
+    });
+  }
+  if (firstCampaignId) {
+    const breakdown = await hit('trust domain breakdown', 'GET', `/api/operator/campaigns/${firstCampaignId}/trust-domains`, [200]);
+    // A rate below the minimum sample must be withheld at source.
+    const leaked = (pick<{ sampleSufficient: boolean; ordersPerThousandReach: number | null }[]>(breakdown.json, 'domains') ?? [])
+      .some((d) => !d.sampleSufficient && d.ordersPerThousandReach !== null);
+    if (leaked) {
+      results.push({
+        name: 'no rate below the minimum sample',
+        method: 'GET',
+        path: `/api/operator/campaigns/${firstCampaignId}/trust-domains`,
+        status: 200,
+        expected: [200],
+        ok: false,
+        note: 'a domain below the minimum sample was reported with a rate',
+      });
+    }
+  }
 
 /* --------------------------------------------------------------- invites */
 

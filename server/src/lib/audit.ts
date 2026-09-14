@@ -81,4 +81,11 @@ export const AUDIT = {
   commissionExported: 'commission.exported',
   paymentRecorded: 'payment.recorded',
   paymentVoided: 'payment.voided',
+  licenceRequested: 'licence.requested',
+  licenceGranted: 'licence.granted',
+  licenceWithdrawn: 'licence.withdrawn',
+  licenceRevoked: 'licence.revoked',
+  adAuthorisationProvided: 'ad_authorisation.provided',
+  adAuthorisationWithdrawn: 'ad_authorisation.withdrawn',
+  trustDomainsTagged: 'creator.trust_domains.tagged',
 } as const;

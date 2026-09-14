@@ -14,6 +14,7 @@ import {
 } from '../ui/primitives.jsx';
 import { BarSeries, ComparisonBars, CoverageBar, InlineBar } from '../ui/charts.jsx';
 import { RevenueSection, type RevenueData } from './RevenueSection.jsx';
+import { TrustDomainSection, type TrustDomainData } from './TrustDomainSection.jsx';
 
 /* Types mirror the /api/report payload rather than the database. */
 
@@ -93,6 +94,7 @@ interface ReportPayload {
     statement: string;
   };
   revenue: RevenueData;
+  trustDomains: TrustDomainData;
   methodology: {
     provenance: string;
     verificationLimit: string;
@@ -254,6 +256,7 @@ export function ReportApp(): ReactNode {
 
       {/* --------------------------------------------------------- revenue */}
       <RevenueSection data={data.revenue} showCreators={data.link.showsCompensation} />
+      <TrustDomainSection data={data.trustDomains} />
 
       {/* --------------------------------------------------------- summary */}
       <section className="mb-12">

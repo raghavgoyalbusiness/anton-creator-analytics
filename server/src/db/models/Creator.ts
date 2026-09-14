@@ -56,6 +56,19 @@ const creatorSchema = new Schema(
     /** Append-only series. See FollowerSnapshot in shared for why. */
     followerSnapshots: { type: [followerSnapshotSchema], default: [] },
     nicheTags: { type: [String], default: [], index: true },
+
+    /**
+     * What this creator's audience comes to them FOR — distinct from niche.
+     *
+     * An operator's judgement, not something the creator self-declares or a
+     * model infers, so who tagged it and when is recorded beside it. Stored as
+     * folded keys (see normaliseTrustDomain) so "Budget Picks" and
+     * "budget-picks" cannot split one signal into two samples too small to
+     * report.
+     */
+    trustDomains: { type: [String], default: [], index: true },
+    trustDomainsTaggedAt: { type: Date, default: null },
+    trustDomainsTaggedByOperatorId: { type: Schema.Types.ObjectId, ref: 'Operator', default: null },
     country: { type: String, default: null, maxlength: 2 },
     city: { type: String, default: null, maxlength: 80 },
     languages: { type: [String], default: [] },

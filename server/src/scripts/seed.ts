@@ -77,6 +77,26 @@ const NOW = new Date('2026-08-23T10:00:00.000Z');
 const daysAgo = (n: number): Date => new Date(NOW.getTime() - n * 86_400_000);
 const sha256 = (s: string): string => createHash('sha256').update(s).digest('hex');
 
+/**
+ * Trust domains derived from a hash of the handle, not drawn from the RNG.
+ *
+ * Every draw from `rng` shifts every value seeded after it, so adding this
+ * with `pick()` would silently reshuffle the codes, orders and earnings the
+ * rest of the seed produces. A hash leaves all of that exactly as it was.
+ *
+ * Deliberately lopsided — most tagged creators land in two domains — so one
+ * domain crosses the minimum sample for a reportable rate and the others show
+ * what "not enough orders yet" looks like.
+ */
+const SEEDED_DOMAIN_POOL = ['budget_picks', 'budget_picks', 'ingredient_science', 'routine_technique', 'sensitive_skin'];
+function seededTrustDomains(handle: string): string[] {
+  const n = parseInt(sha256(`trust:${handle}`).slice(0, 8), 16);
+  if (n % 5 === 0) return []; // some creators are simply not tagged yet
+  const first = SEEDED_DOMAIN_POOL[n % SEEDED_DOMAIN_POOL.length] ?? 'budget_picks';
+  const second = SEEDED_DOMAIN_POOL[(n >>> 8) % SEEDED_DOMAIN_POOL.length] ?? first;
+  return first === second ? [first] : [first, second];
+}
+
 /* ------------------------------------------------------------- vocabulary */
 
 const NICHES = [
@@ -193,6 +213,8 @@ function buildCreators(
       ],
       followerSnapshots: snapshots,
       nicheTags: Array.from(new Set([pick(NICHES), pick(NICHES)])),
+      trustDomains: seededTrustDomains(handle),
+      trustDomainsTaggedAt: seededTrustDomains(handle).length > 0 ? daysAgo(30) : null,
       country,
       city,
       languages: chance(0.15) ? ['en', pick(['fr', 'es', 'pl', 'ur'])] : ['en'],

@@ -6,9 +6,10 @@ import { ConsentGate } from './ConsentGate.jsx';
 import { SubmitFlow } from './SubmitFlow.jsx';
 import { MyData } from './MyData.jsx';
 import { Earnings } from './Earnings.jsx';
+import { Rights } from './Rights.jsx';
 import { FORMAT_LABELS, type CreatorSessionResponse } from './types.js';
 
-type Tab = 'submit' | 'history' | 'earnings' | 'data';
+type Tab = 'submit' | 'history' | 'earnings' | 'rights' | 'data';
 
 /**
  * The creator surface root.
@@ -131,12 +132,13 @@ export function CreatorApp(): ReactNode {
         <h1 className="text-title font-semibold tracking-tight">Hi {firstName}</h1>
       </header>
 
-      <nav className="mb-6 grid grid-cols-4 gap-1 rounded-[--radius-lg] border border-line p-1" role="tablist">
+      <nav className="mb-6 grid grid-cols-5 gap-1 rounded-[--radius-lg] border border-line p-1" role="tablist">
         {(
           [
             ['submit', 'Submit'],
             ['history', 'Sent'],
             ['earnings', 'Earnings'],
+            ['rights', 'Rights'],
             ['data', 'My data'],
           ] as [Tab, string][]
         ).map(([key, label]) => (
@@ -200,6 +202,8 @@ export function CreatorApp(): ReactNode {
       ) : null}
 
       {tab === 'earnings' ? <Earnings /> : null}
+
+      {tab === 'rights' ? <Rights /> : null}
 
       {tab === 'data' ? <MyData displayName={firstName} /> : null}
 

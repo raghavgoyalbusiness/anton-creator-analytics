@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {
   engagementRate,
   followerCountAsOf,
+  labelForTrustDomain,
   nicheTagSchema,
   objectIdSchema,
   platformSchema,
@@ -145,6 +146,7 @@ operatorRosterRouter.get(
         handles: creator.handles.map((h) => ({ platform: h.platform, handle: h.handle })),
         status: creator.status,
         nicheTags: creator.nicheTags,
+        trustDomains: (creator.trustDomains ?? []).map((key) => ({ key, label: labelForTrustDomain(key) })),
         country: creator.country,
         city: creator.city,
         languages: creator.languages,

@@ -15,6 +15,9 @@ import { ingestRouter } from './routes/ingest.js';
 import { attributionRouter } from './routes/attribution.js';
 import { commissionRouter } from './routes/commission.js';
 import { creatorEarningsRouter } from './routes/creator-earnings.js';
+import { licensingRouter } from './routes/licensing.js';
+import { trustDomainsRouter } from './routes/trust-domains.js';
+import { creatorLicensingRouter } from './routes/creator-licensing.js';
 import { storageRouter } from './routes/storage.js';
 
 export function createApp(): Express {
@@ -76,6 +79,7 @@ export function createApp(): Express {
 
   app.use('/api/creator', creatorRouter);
   app.use('/api/creator', creatorEarningsRouter);
+  app.use('/api/creator', creatorLicensingRouter);
   app.use('/api/operator/auth', operatorAuthRouter);
   app.use('/api/operator', operatorQueueRouter);
   app.use('/api/operator', operatorRosterRouter);
@@ -85,6 +89,8 @@ export function createApp(): Express {
   app.use('/api/operator', ingestRouter);
   app.use('/api/operator', attributionRouter);
   app.use('/api/operator', commissionRouter);
+  app.use('/api/operator', licensingRouter);
+  app.use('/api/operator', trustDomainsRouter);
   // Public, token-gated. Mounted last so it cannot shadow an operator route.
   app.use('/api/report', shareRouter);
 

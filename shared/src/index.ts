@@ -26,3 +26,5 @@ export * from './tracking/codes.js';
 export * from './ingest/csv.js';
 export * from './ingest/map.js';
 export * from './attribution/engine.js';
+export * from './licensing/rights.js';
+export * from './trust/domains.js';

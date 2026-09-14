@@ -61,6 +61,41 @@ npm run typecheck
 6. Brand share view
 7. Nudge and export tooling
 
+## Attribution and commission layer — all nine done
+
+**Anton calculates money but never moves it.** No payouts, no wallets, no held
+balances, no payment processing. Anton works out what is owed and shows it to
+both sides; the brand pays the creator directly. A "payment" in this codebase is
+a dated record of the brand saying it paid — it instructs nothing.
+
+1. Types, validators and the commission engine — integer minor units, basis
+   points for rates, round half away from zero, exact negation on full refund
+2. Tracking assets — discount codes unique per brand, confusable characters
+   folded (`O`→`0`, `I`/`L`→`1`), short links
+3. Order ingestion from a manual CSV — idempotent on `(brand, source, order id)`,
+   ambiguous money and dates refused rather than guessed. Shopify is a stub that
+   throws, by design
+4. Attribution — code, then link last-touch, then unattributed with a stated
+   reason. Conflicts logged. The window in force is stored on every row
+5. Commission ledger — append-only at the model (update and delete throw),
+   balances summed on read, replay nets to nothing
+6. Creator earnings on the magic link — no customer data, every line shows its
+   arithmetic, downloadable statement
+7. Brand report revenue section — above reach; the method breakdown and the
+   unattributed orders are permanent, and the report says attribution is not
+   causation
+8. Content licensing and ad authorisation — an operator can only *ask*; only the
+   creator can grant, on their own link, against a hash of the exact terms.
+   Ad codes are refused unless the licence covers paid amplification
+9. Trust domains — what an audience trusts a creator *for*. No per-domain rate
+   below 25 attributed orders: not a rate with a caveat, no rate
+
+**Last-touch from a CSV works through the store, not a cookie.** A spreadsheet
+has no visitor id, so link attribution reads the `anton_ref` parameter the store
+recorded on the session (Shopify's "Landing Site" and its equivalents). Only the
+code is kept; the URL is discarded, because that query string routinely carries
+a customer's email.
+
 ## Three surfaces
 
 | Surface | Path | Auth |
@@ -121,10 +156,10 @@ an append-only array of `{field, from, to, by, at, reason}`.
 **Null is not zero.** A metric we did not capture is `null` and renders as "not
 captured". Zero is a real value and stays distinguishable from absence.
 
-**No modelled conversions, anywhere.** Discount-code redemptions and revenue are
-only ever figures the brand reported to us, with the source noted. Absent that,
-the report says reach and engagement and states plainly that conversion tracking
-requires code or link adoption.
+**No modelled conversions, anywhere.** Revenue comes from the brand's own order
+export, matched to a creator only by a code the customer typed or a link the
+store recorded. Nothing is inferred, extrapolated or estimated, and orders
+nobody can claim are reported beside the ones they can.
 
 **The mega-influencer comparison is a benchmark you typed in.** It carries the
 label and source note you entered, and the report says so next to the number.

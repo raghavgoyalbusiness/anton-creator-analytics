@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { api, ApiError } from '../lib/api.js';
+import { RightsPanel } from './RightsPanel.jsx';
 import { Button, Card, Notice, Spinner, inputClass } from '../ui/primitives.jsx';
 
 interface Campaign {
@@ -98,6 +99,7 @@ export function Campaigns(): ReactNode {
       {campaign ? (
         <>
           <BenchmarkEditor campaign={campaign} onSaved={() => void load()} />
+          <RightsPanel campaignId={campaign.id} />
           <ShareLinks
             campaign={campaign}
             links={campaignLinks}

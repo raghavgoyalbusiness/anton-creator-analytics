@@ -307,13 +307,10 @@ export type TrustDomain = string;
  */
 export const MIN_SAMPLE_FOR_DOMAIN_RATE = 25;
 
-/* ------------------------------------------------------- ad authorisation */
-
-export type AdPlatform = 'tiktok_spark' | 'meta_partnership';
-
-export interface AdAuthorisation {
-  readonly platform: AdPlatform;
-  readonly code: string;
-  readonly expiresAt: Date | null;
-  readonly providedAt: Date;
-}
+/*
+ * Ad authorisation and content licensing live in ../licensing/rights.ts.
+ *
+ * They were stubs here in phase 1. Now that they carry real logic — what a
+ * brand may do with a post, and whether it can actually run as an ad — the
+ * types belong beside the rules that interpret them, so the two cannot drift.
+ */

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, ApiError } from '../lib/api.js';
 import { Badge, Button, Card, Notice, Spinner, Table, Td, Tr, inputClass } from '../ui/primitives.jsx';
+import { TrustDomainEditor, type DomainOption } from './TrustDomainEditor.jsx';
 
 interface RosterCreator {
   id: string;
@@ -8,6 +9,7 @@ interface RosterCreator {
   handles: { platform: string; handle: string }[];
   status: string;
   nicheTags: string[];
+  trustDomains: { key: string; label: string }[];
   country: string | null;
   city: string | null;
   followers: number | null;
@@ -40,6 +42,14 @@ export function Roster(): ReactNode {
   const [platform, setPlatform] = useState('');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<Sort>('followers');
+  const [domainOptions, setDomainOptions] = useState<{ domains: DomainOption[]; maxPerCreator: number } | null>(null);
+
+  useEffect(() => {
+    api
+      .get<{ domains: DomainOption[]; maxPerCreator: number }>('/api/operator/trust-domains')
+      .then(setDomainOptions)
+      .catch(() => setDomainOptions(null));
+  }, []);
 
   const load = useCallback(async (): Promise<void> => {
     const params = new URLSearchParams({ sort, limit: '500' });
@@ -187,13 +197,14 @@ export function Roster(): ReactNode {
             },
             { key: 'creator', label: 'Creator' },
             { key: 'niche', label: 'Niche' },
+            { key: 'trust', label: 'Trusted for' },
             { key: 'followers', label: 'Followers', align: 'right' },
             { key: 'er', label: 'Median ER', align: 'right' },
             { key: 'posts', label: 'Posts', align: 'right' },
             { key: 'campaigns', label: 'Campaigns', align: 'right' },
             { key: 'consent', label: 'Consent' },
           ]}
-          minWidth="56rem"
+          minWidth="64rem"
         >
           {creators.map((c) => (
             <Tr key={c.id} className="hover:bg-sunken">
@@ -220,6 +231,30 @@ export function Roster(): ReactNode {
                 </div>
               </Td>
               <Td className="text-caption text-muted">{c.nicheTags.join(', ') || '—'}</Td>
+              <Td>
+                {domainOptions ? (
+                  <TrustDomainEditor
+                    creatorId={c.id}
+                    current={c.trustDomains}
+                    options={domainOptions.domains}
+                    max={domainOptions.maxPerCreator}
+                    onSaved={(domains) =>
+                      setData((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              creators: prev.creators.map((x) =>
+                                x.id === c.id ? { ...x, trustDomains: domains } : x,
+                              ),
+                            }
+                          : prev,
+                      )
+                    }
+                  />
+                ) : (
+                  <span className="text-caption text-muted">—</span>
+                )}
+              </Td>
               <Td align="right" numeric>
                 {c.followers?.toLocaleString() ?? '—'}
               </Td>

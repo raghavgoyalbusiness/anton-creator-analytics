@@ -28,6 +28,7 @@ import {
   ShareLinkModel,
 } from '../db/models/index.js';
 import { buildRevenueSection } from '../reporting/revenue.js';
+import { buildTrustDomainSection } from '../reporting/trust-domains.js';
 import { ApiError } from '../lib/errors.js';
 import { asyncRoute, parseBody } from '../lib/validate.js';
 import { hashToken, looksLikeToken, mintToken } from '../lib/tokens.js';
@@ -318,6 +319,12 @@ shareRouter.get(
       currency: campaign.currency,
     });
 
+    const trustDomains = await buildTrustDomainSection({
+      campaignId: campaign._id,
+      brandId: campaign.brandId,
+      currency: campaign.currency,
+    });
+
     // Log the view. Capped so a link that gets shared widely does not grow the
     // document without bound.
     const now = new Date();
@@ -388,6 +395,8 @@ shareRouter.get(
        * its absence as bad news, which is worse than an honest zero.
        */
       revenue,
+      /** Rates below the minimum sample are withheld at source, not in the UI. */
+      trustDomains,
       /**
        * The methodology note. Kept server-side so the report cannot be rendered
        * without it, and phrased to say exactly what these numbers are.

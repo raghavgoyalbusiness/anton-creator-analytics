@@ -1,4 +1,10 @@
 import { Schema, model, type InferSchemaType, type Model } from 'mongoose';
+import {
+  PERMITTED_USES,
+  licenceStatus,
+  permits,
+  type PermittedUse,
+} from '@anton/shared';
 
 /**
  * Content usage rights.
@@ -13,15 +19,12 @@ import { Schema, model, type InferSchemaType, type Model } from 'mongoose';
  * default from this system's silence.
  */
 
-export const PERMITTED_USES = [
-  'organic_reshare',
-  'paid_amplification',
-  'website',
-  'print',
-  'email_marketing',
-  'in_store_display',
-] as const;
-export type PermittedUse = (typeof PERMITTED_USES)[number];
+/*
+ * The vocabulary and the rules live in @anton/shared. Re-exported here so
+ * existing imports keep working, but there is one definition, beside the logic
+ * that interprets it.
+ */
+export { PERMITTED_USES, type PermittedUse };
 
 const contentLicenseSchema = new Schema(
   {
@@ -72,6 +75,18 @@ const contentLicenseSchema = new Schema(
     currency: { type: String, default: null, maxlength: 3 },
 
     notes: { type: String, default: null, maxlength: 2000 },
+
+    /**
+     * Who proposed these terms, and when the creator was asked.
+     *
+     * An ungranted row is a REQUEST, not a licence. Recording who drafted it
+     * keeps "the brand wanted these rights" distinct from "the creator agreed
+     * to them", which is the distinction the whole model exists to hold.
+     */
+    requestedByOperatorId: { type: Schema.Types.ObjectId, ref: 'Operator', default: null },
+    requestedAt: { type: Date, default: null },
+    /** The exact wording the creator was shown, hashed, as with consent. */
+    termsSha256: { type: String, default: null, match: /^[a-f0-9]{64}$/ },
   },
   { timestamps: true, collection: 'content_licenses' },
 );
@@ -101,16 +116,33 @@ export const ContentLicenseModel: Model<ContentLicenseDoc> = model<ContentLicens
   contentLicenseSchema,
 );
 
+/**
+ * Adapts a stored document to the shape the shared rules expect.
+ *
+ * A thin shim on purpose: the decision about what a brand may do is not
+ * allowed to live in two places, and the version that matters is the pure one
+ * that can be replayed from a fixture in a dispute.
+ */
+export function toLicenceLike(doc: ContentLicenseDoc | null): Parameters<typeof licenceStatus>[0] {
+  if (!doc) return null;
+  return {
+    permittedUses: doc.permittedUses,
+    territory: doc.territory,
+    grantedAt: doc.grantedAt ?? null,
+    revokedAt: doc.revokedAt ?? null,
+    startsAt: doc.startsAt,
+    endsAt: doc.endsAt ?? null,
+    nameAndLikenessPermitted: doc.nameAndLikenessPermitted,
+    modificationPermitted: doc.modificationPermitted,
+    whitelistingPermitted: doc.whitelistingPermitted,
+  };
+}
+
 /** Is a use permitted right now? Absence of a licence is always "no". */
 export function licencePermits(
-  licence: Pick<ContentLicenseDoc, 'permittedUses' | 'grantedAt' | 'revokedAt' | 'startsAt' | 'endsAt'> | null,
+  licence: ContentLicenseDoc | null,
   use: PermittedUse,
   at: Date,
 ): boolean {
-  if (!licence) return false;
-  if (licence.grantedAt == null) return false;
-  if (licence.revokedAt != null) return false;
-  if (at.getTime() < licence.startsAt.getTime()) return false;
-  if (licence.endsAt != null && at.getTime() > licence.endsAt.getTime()) return false;
-  return licence.permittedUses.includes(use);
+  return permits(toLicenceLike(licence), use, at);
 }

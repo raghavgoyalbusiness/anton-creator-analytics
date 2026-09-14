@@ -1,5 +1,6 @@
 import { Schema, model, type InferSchemaType, type Model } from 'mongoose';
 import {
+  AD_PLATFORMS,
   EXTRACTION_STATUSES,
   METRIC_KEYS,
   METRIC_SOURCES,
@@ -89,6 +90,31 @@ const metricOverrideSchema = new Schema(
     by: { type: Schema.Types.ObjectId, ref: 'Operator', required: true },
     at: { type: Date, required: true },
     reason: { type: String, default: null, maxlength: 500 },
+  },
+  { _id: false },
+);
+
+/**
+ * A platform ad authorisation code, supplied by the creator.
+ *
+ * A TikTok Spark code or a Meta partnership ad code is the PLATFORM's
+ * permission to run someone else's post as an ad. It is not the creator's
+ * legal permission — that is the ContentLicense — and the two are stored
+ * apart because they are granted separately, expire separately, and are
+ * withdrawn separately.
+ *
+ * Only the creator can issue one of these, and only from their own account.
+ * Anton never generates them and cannot.
+ */
+const adAuthorisationSchema = new Schema(
+  {
+    platform: { type: String, required: true, enum: AD_PLATFORMS },
+    code: { type: String, required: true, maxlength: 200 },
+    providedAt: { type: Date, required: true },
+    /** Spark codes are short-lived; null only when the creator did not say. */
+    expiresAt: { type: Date, default: null },
+    revokedAt: { type: Date, default: null },
+    revokedReason: { type: String, default: null, maxlength: 300 },
   },
   { _id: false },
 );
@@ -186,6 +212,13 @@ const postSchema = new Schema(
     verifiedAt: { type: Date, default: null },
     rejectedReason: { type: String, default: null, maxlength: 500 },
     manualOverrides: { type: [metricOverrideSchema], default: [] },
+
+    /**
+     * At most one live code per platform, but the array keeps superseded ones:
+     * "the creator gave us a code and then withdrew it" is a fact somebody
+     * will need to establish later.
+     */
+    adAuthorisations: { type: [adAuthorisationSchema], default: [] },
 
     submittedAt: { type: Date, required: true, default: () => new Date() },
   },
