@@ -2,10 +2,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import type TestAgent from 'supertest/lib/agent.js';
 import { Types } from 'mongoose';
-import type { Express } from 'express';
+import type { Server } from 'node:http';
 import * as OTPAuth from 'otpauth';
 import { normaliseTypedCode } from '@anton/shared';
 import { createApp } from '../app.js';
+import { closeTestServer, listenForTests } from '../testing/server.js';
 import { connectDb, disconnectDb } from '../db/connect.js';
 import {
   AuditLogModel,
@@ -17,7 +18,7 @@ import { ColumnMappingModel, IngestBatchModel, OrderModel } from '../db/models/O
 import { hashPassword } from '../lib/operator-session.js';
 import { clearRateLimits } from '../lib/rate-limit.js';
 
-let app: Express;
+let app: Server;
 let operatorId: Types.ObjectId;
 let brandA: Types.ObjectId;
 let brandB: Types.ObjectId;
@@ -110,9 +111,10 @@ function post(agent: TestAgent, path: string, body: string | Buffer) {
 
 beforeAll(async () => {
   await connectDb();
-  app = createApp();
+  app = await listenForTests(createApp());
 });
 afterAll(async () => {
+  await closeTestServer(app);
   await disconnectDb();
 });
 
@@ -631,12 +633,15 @@ describe('cross-brand isolation', () => {
     const agent = await signedIn();
     await saveMapping(agent, brandA);
     await saveMapping(agent, brandB);
-    await post(agent, `/api/operator/brands/${brandA.toString()}/orders/commit`, BASE_CSV);
-    await post(
+    const a = await post(agent, `/api/operator/brands/${brandA.toString()}/orders/commit`, BASE_CSV);
+    const b = await post(
       agent,
       `/api/operator/brands/${brandB.toString()}/orders/commit`,
       csv('9001,2026-08-04,999.00,999.00,GBP,BRANDB,new,paid,,,'),
     );
+    // Setup that can fail silently makes every test in this block unreliable.
+    expect(a.status, JSON.stringify(a.body)).toBe(201);
+    expect(b.status, JSON.stringify(b.body)).toBe(201);
     await clearRateLimits();
   });
 

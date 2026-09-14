@@ -2,8 +2,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import type TestAgent from 'supertest/lib/agent.js';
 import { Types } from 'mongoose';
-import type { Express } from 'express';
+import type { Server } from 'node:http';
 import { createApp } from '../app.js';
+import { closeTestServer, listenForTests } from '../testing/server.js';
 import { connectDb, disconnectDb } from '../db/connect.js';
 import {
   AuditLogModel,
@@ -25,7 +26,7 @@ import { postCommission } from '../commission/post.js';
 import { clearRateLimits } from '../lib/rate-limit.js';
 import { loadConsentDocument } from '../config/consent.js';
 
-let app: Express;
+let app: Server;
 let operatorId: Types.ObjectId;
 let brandId: Types.ObjectId;
 let campaignId: Types.ObjectId;
@@ -103,9 +104,10 @@ async function runEverything(): Promise<void> {
 
 beforeAll(async () => {
   await connectDb();
-  app = createApp();
+  app = await listenForTests(createApp());
 });
 afterAll(async () => {
+  await closeTestServer(app);
   await disconnectDb();
 });
 

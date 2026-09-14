@@ -2,8 +2,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import type TestAgent from 'supertest/lib/agent.js';
 import { Types } from 'mongoose';
-import type { Express } from 'express';
+import type { Server } from 'node:http';
 import { createApp } from '../app.js';
+import { closeTestServer, listenForTests } from '../testing/server.js';
 import { connectDb, disconnectDb } from '../db/connect.js';
 import {
   AuditLogModel,
@@ -26,7 +27,7 @@ import { getStorage } from '../storage/index.js';
  * fires at write time still fails the test.
  */
 
-let app: Express;
+let app: Server;
 let operatorId: Types.ObjectId;
 let campaignId: Types.ObjectId;
 let creatorId: Types.ObjectId;
@@ -90,10 +91,11 @@ async function uploadScreenshot(agent: TestAgent, bytes = PNG_BYTES): Promise<st
 
 beforeAll(async () => {
   await connectDb();
-  app = createApp();
+  app = await listenForTests(createApp());
 });
 
 afterAll(async () => {
+  await closeTestServer(app);
   await disconnectDb();
 });
 

@@ -2,9 +2,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import type TestAgent from 'supertest/lib/agent.js';
 import { Types } from 'mongoose';
-import type { Express } from 'express';
+import type { Server } from 'node:http';
 import * as OTPAuth from 'otpauth';
 import { createApp } from '../app.js';
+import { closeTestServer, listenForTests } from '../testing/server.js';
 import { connectDb, disconnectDb } from '../db/connect.js';
 import {
   BrandModel,
@@ -21,7 +22,7 @@ import { clearRateLimits } from '../lib/rate-limit.js';
 import { getStorage } from '../storage/index.js';
 import { peekEmailCode } from './share.js';
 
-let app: Express;
+let app: Server;
 let operatorId: Types.ObjectId;
 let campaignId: Types.ObjectId;
 let creatorId: Types.ObjectId;
@@ -65,9 +66,10 @@ async function makeShareLink(
 
 beforeAll(async () => {
   await connectDb();
-  app = createApp();
+  app = await listenForTests(createApp());
 });
 afterAll(async () => {
+  await closeTestServer(app);
   await disconnectDb();
 });
 
