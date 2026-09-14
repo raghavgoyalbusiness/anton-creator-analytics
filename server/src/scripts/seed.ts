@@ -363,6 +363,22 @@ function metricsFor(format: PostFormat, followers: number, flavour: Flavour): Po
 
 async function seed(reset: boolean): Promise<void> {
   const env = loadEnv();
+
+  /**
+   * The seed never runs against production. Not a warning — a refusal.
+   *
+   * It wipes every collection on --reset, and it creates an operator whose
+   * password and TOTP secret are written in this file, in a public repository.
+   * The env guard in config/env.ts does NOT cover this: a correctly configured
+   * production environment passes it, and would then seed a known login.
+   * Checked before connecting, so not even a read reaches the database.
+   */
+  if (env.NODE_ENV === 'production') {
+    throw new Error(
+      'Refusing to seed: NODE_ENV is production. The seed wipes data and creates a login whose credentials are public.',
+    );
+  }
+
   await connectDb();
 
   if (reset) {
@@ -402,7 +418,7 @@ async function seed(reset: boolean): Promise<void> {
   const operatorId = new Types.ObjectId();
   const DEV_PASSWORD = 'anton-dev-password';
   // Fixed so the authenticator entry survives a reseed. Development only: the
-  // production guard in env.ts refuses to boot with dev defaults in place.
+  // seed refuses outright to run in production (see the top of seed()).
   const DEV_TOTP_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
   const recovery = await generateRecoveryCodes(4);
 
