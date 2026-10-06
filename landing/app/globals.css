@@ -1,0 +1,109 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens.
+ *
+ * One ground, one ink, one accent. Contrast was computed before these were
+ * adopted, not after:
+ *   ink on paper 16.35 · muted on paper 5.74 · accent on paper 7.23
+ *   paper on ink 16.35 · muted-dark on ink 7.30 · accent-dark on ink 10.36
+ * `faint` is 3.41:1 and is for rules and decoration only — never text.
+ * The accent has two tokens on purpose: a mid-tone that passes on one ground
+ * fails on the other, so `accent` is for light grounds and `accent-dark` for
+ * the ink section, and neither crosses over.
+ */
+@theme {
+  --color-paper: #f6f2ea;
+  --color-surface: #fffdf8;
+  --color-sunken: #efe9de;
+  --color-ink: #17150f;
+  --color-muted: #655e53;
+  --color-faint: #8a8273;
+  --color-line: #e2dacb;
+  --color-line-strong: #cfc5b3;
+  --color-accent: #1e5a44;
+  --color-accent-soft: #e3efe8;
+  --color-accent-dark: #8fd1b0;
+  --color-muted-dark: #aba394;
+  --color-pass: #a33a22;
+  --color-pass-soft: #f6e4dd;
+
+  --font-serif: var(--font-instrument-serif), 'Iowan Old Style', Georgia, serif;
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --text-display: clamp(2.75rem, 1.2rem + 5.4vw, 5.75rem);
+  --text-display--line-height: 0.98;
+  --text-title: clamp(2.1rem, 1.3rem + 2.6vw, 3.5rem);
+  --text-title--line-height: 1.02;
+
+  --radius-card: 1.25rem;
+  --shadow-lift: 0 1px 0 rgb(23 21 15 / 0.04), 0 12px 32px -12px rgb(23 21 15 / 0.18);
+  --shadow-float: 0 1px 0 rgb(23 21 15 / 0.04), 0 24px 60px -24px rgb(23 21 15 / 0.28);
+
+  --animate-drift-up: drift-up 70s ease-in-out infinite alternate;
+  --animate-drift-down: drift-down 80s ease-in-out infinite alternate;
+  --animate-marquee: marquee 40s linear infinite;
+}
+
+@keyframes drift-up {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, -28%, 0); }
+}
+@keyframes drift-down {
+  from { transform: translate3d(0, -28%, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+@keyframes marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+@layer base {
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+  }
+  /* Anchors land below the sticky nav rather than under it. */
+  [id] {
+    scroll-margin-top: 6rem;
+  }
+  /* One visible focus style everywhere; never removed, only replaced. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  .on-ink :focus-visible {
+    outline-color: var(--color-accent-dark);
+  }
+}
+
+@utility tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Editorial headline: serif, with the last phrase set in italic. */
+@utility headline {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

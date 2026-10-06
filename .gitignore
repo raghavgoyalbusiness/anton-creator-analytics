@@ -9,3 +9,8 @@ dist/
 .mongo-test-data/
 .storage-test/
 server-uri
+
+# Next.js
+.next/
+next-env.d.ts
+web/dist-types/

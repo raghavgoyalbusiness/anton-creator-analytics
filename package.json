@@ -6,7 +6,8 @@
   "workspaces": [
     "shared",
     "server",
-    "web"
+    "web",
+    "landing"
   ],
   "scripts": {
     "typecheck": "tsc --build --verbose",
@@ -14,7 +15,8 @@
     "db:seed": "npm run db:seed --workspace @anton/server",
     "db:reset": "npm run db:reset --workspace @anton/server",
     "dev:api": "npm run dev --workspace @anton/server",
-    "dev:web": "npm run dev --workspace @anton/web"
+    "dev:web": "npm run dev --workspace @anton/web",
+    "dev:landing": "npm run dev --workspace @anton/landing"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
